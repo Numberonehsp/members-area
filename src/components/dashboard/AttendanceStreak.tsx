@@ -1,36 +1,106 @@
-// Weekly attendance heatmap — Mon to Sun for the current week
-// Seed data replaces GymMaster until the attendance sync is wired up
+import { cookies } from 'next/headers'
+import { getMonthlyVisits } from '@/lib/gymmaster'
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const MIN_VISITS_FOR_STREAK = 3
+const MAX_MONTHS_BACK = 24
 
-// Get ISO day index (0=Mon … 6=Sun) for a given Date
-function isoDay(d: Date) {
+/** Returns ISO day index 0=Mon … 6=Sun */
+function isoDay(d: Date): number {
   return (d.getDay() + 6) % 7
 }
 
-// Seed: visited Mon, Wed, Fri this week
-function getSeedVisitedDays(): boolean[] {
-  return [true, false, true, false, true, false, false]
+/** Returns the Monday of the week containing `date` at midnight */
+function getMondayOf(date: Date): Date {
+  const d = new Date(date)
+  d.setHours(0, 0, 0, 0)
+  d.setDate(d.getDate() - isoDay(d))
+  return d
 }
 
-function getWeekDates(): Date[] {
+/** Returns an ISO date string 'YYYY-MM-DD' for a Date */
+function toISO(d: Date): string {
+  return d.toISOString().split('T')[0]
+}
+
+/**
+ * Count how many consecutive weeks (going back from the current week)
+ * have at least `minVisits` visits, given a flat array of visit date strings.
+ */
+function calcStreak(visitDates: string[], minVisits: number): number {
+  if (visitDates.length === 0) return 0
+
+  const visitSet = new Set(visitDates)
   const today = new Date()
-  const dayOfWeek = isoDay(today)
-  const monday = new Date(today)
-  monday.setDate(today.getDate() - dayOfWeek)
-  return DAYS.map((_, i) => {
-    const d = new Date(monday)
-    d.setDate(monday.getDate() + i)
+  today.setHours(0, 0, 0, 0)
+
+  let streak = 0
+  let weekMonday = getMondayOf(today)
+
+  const maxWeeks = MAX_MONTHS_BACK * 5
+
+  for (let w = 0; w < maxWeeks; w++) {
+    let count = 0
+    for (let d = 0; d < 7; d++) {
+      const day = new Date(weekMonday)
+      day.setDate(weekMonday.getDate() + d)
+      if (day > today) break
+      if (visitSet.has(toISO(day))) count++
+    }
+
+    if (count >= minVisits) {
+      streak++
+    } else {
+      break
+    }
+
+    weekMonday = new Date(weekMonday)
+    weekMonday.setDate(weekMonday.getDate() - 7)
+  }
+
+  return streak
+}
+
+export default async function AttendanceStreak() {
+  const cookieStore = await cookies()
+  const memberId = cookieStore.get('gymmaster_member_id')?.value ?? 'seed'
+  const memberToken = cookieStore.get('gymmaster_token')?.value ?? ''
+
+  const allVisitDates: string[] = []
+  const today = new Date()
+  let year = today.getFullYear()
+  let month = today.getMonth() + 1
+  let monthsFetched = 0
+  let streakBroken = false
+
+  while (monthsFetched < MAX_MONTHS_BACK && !streakBroken) {
+    const data = await getMonthlyVisits(memberId, year, month, memberToken || undefined)
+    allVisitDates.push(...data.visitDates)
+    monthsFetched++
+
+    if (data.visitDates.length === 0 && monthsFetched > 1) {
+      streakBroken = true
+    }
+
+    month--
+    if (month === 0) {
+      month = 12
+      year--
+    }
+  }
+
+  const weekMonday = getMondayOf(today)
+  const visitSet = new Set(allVisitDates)
+  const weekDates = DAYS.map((_, i) => {
+    const d = new Date(weekMonday)
+    d.setDate(weekMonday.getDate() + i)
     return d
   })
-}
-
-export default function AttendanceStreak() {
-  const weekDates = getWeekDates()
-  const visitedDays = getSeedVisitedDays()
-  const today = new Date()
-  const todayIso = isoDay(today)
+  const visitedDays = weekDates.map(d => visitSet.has(toISO(d)))
   const visitsThisWeek = visitedDays.filter(Boolean).length
+  const todayIso = isoDay(today)
+
+  const streakWeeks = calcStreak(allVisitDates, MIN_VISITS_FOR_STREAK)
 
   return (
     <div className="bg-bg-card border border-border-light rounded-2xl p-5 relative overflow-hidden shadow-sm">
@@ -51,7 +121,6 @@ export default function AttendanceStreak() {
         </div>
       </div>
 
-      {/* Day heatmap */}
       <div className="grid grid-cols-7 gap-1.5">
         {DAYS.map((day, i) => {
           const date = weekDates[i]
@@ -90,12 +159,18 @@ export default function AttendanceStreak() {
         })}
       </div>
 
-      {/* Streak badge */}
       <div className="mt-4 pt-3 border-t border-border-light flex items-center gap-2">
         <span className="text-base">🔥</span>
-        <p className="text-xs text-text-secondary">
-          <span className="font-semibold text-text-primary">3 weeks in a row</span> with 3+ visits
-        </p>
+        {streakWeeks > 0 ? (
+          <p className="text-xs text-text-secondary">
+            <span className="font-semibold text-text-primary">{streakWeeks} week{streakWeeks !== 1 ? 's' : ''} in a row</span>
+            {' '}with {MIN_VISITS_FOR_STREAK}+ visits
+          </p>
+        ) : (
+          <p className="text-xs text-text-secondary">
+            Hit {MIN_VISITS_FOR_STREAK}+ visits this week to start your streak!
+          </p>
+        )}
       </div>
     </div>
   )
