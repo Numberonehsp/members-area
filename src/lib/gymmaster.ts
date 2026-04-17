@@ -194,12 +194,13 @@ export async function getMonthlyVisits(
   const visitDates: string[] = []
   const r = data.result as Record<string, unknown>
 
-  // Shape 1: array of { month: number, count: number }
+  // Shape 1: array of { month: number, visits: number } (GymMaster actual response)
   if (Array.isArray(data.result)) {
-    const entry = (data.result as Array<{ month?: number; count?: number }>).find(
+    const entry = (data.result as Array<{ month?: number; visits?: number; count?: number }>).find(
       (e) => e.month === month
     )
-    if (entry?.count != null) visitCount = entry.count
+    if (entry?.visits != null) visitCount = entry.visits
+    else if (entry?.count != null) visitCount = entry.count
   }
   // Shape 2: object with month numbers as keys e.g. { "4": 9 }
   else if (r[String(month)] != null) {
