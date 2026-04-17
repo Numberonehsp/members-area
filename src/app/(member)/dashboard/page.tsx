@@ -3,7 +3,6 @@ import AnnouncementBanner from "@/components/dashboard/AnnouncementBanner";
 import WelcomeBanner from "@/components/dashboard/WelcomeBanner";
 import QuickStats from "@/components/dashboard/QuickStats";
 import AttendanceStreak from "@/components/dashboard/AttendanceStreak";
-import AttendanceWidget from "@/components/dashboard/AttendanceWidget";
 import ChallengesPreview from "@/components/dashboard/ChallengesPreview";
 import AwardsPreview from "@/components/dashboard/AwardsPreview";
 import GymEvents from "@/components/dashboard/GymEvents";
@@ -56,14 +55,11 @@ export default async function DashboardPage() {
           </div>
         )}
 
-        {/* Attendance streak — weekly heatmap */}
+        {/* Attendance + Commitment Club — combined card */}
         <AttendanceStreak />
 
         {/* Gym Events — live from Staff Hub */}
         <GymEvents />
-
-        {/* Commitment Club — monthly progress */}
-        <AttendanceWidget />
 
         {/* Active Challenges — live from Staff Hub */}
         <ChallengesPreview />
