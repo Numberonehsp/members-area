@@ -46,6 +46,15 @@ export type StaffHubChallenge = {
   is_active: boolean
 }
 
+export type StaffHubAward = {
+  id: string
+  month: string           // ISO date string, first of month e.g. '2026-04-01'
+  award_type: 'athlete_of_month' | 'commitment_club'
+  member_name: string
+  reason: string | null
+  created_at: string
+}
+
 // ── Fetch helpers ─────────────────────────────────────────────────────────────
 
 /**
@@ -143,6 +152,30 @@ export async function fetchChallenge(id: string): Promise<StaffHubChallenge | nu
   } catch (err) {
     console.warn('[StaffHub] fetchChallenge threw:', err)
     return null
+  }
+}
+
+/**
+ * Fetch recent awards from Staff Hub — shown as a noticeboard on the Members Area dashboard.
+ * Returns up to `limit` most recent awards ordered by month descending.
+ */
+export async function fetchAwards(limit = 6): Promise<StaffHubAward[]> {
+  if (!STAFFHUB_URL || !STAFFHUB_ANON_KEY) return []
+  try {
+    const { data, error } = await staffHubReader
+      .from('member_awards')
+      .select('id, month, award_type, member_name, reason, created_at')
+      .order('month', { ascending: false })
+      .order('award_type', { ascending: true })
+      .limit(limit)
+    if (error) {
+      console.warn('[StaffHub] fetchAwards failed:', error.message)
+      return []
+    }
+    return data ?? []
+  } catch (err) {
+    console.warn('[StaffHub] fetchAwards threw:', err)
+    return []
   }
 }
 
