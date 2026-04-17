@@ -138,9 +138,9 @@ export async function getMemberProfile(memberToken: string): Promise<MemberProfi
   const r = data.result
   return {
     memberId: String(r.memberid ?? r.id ?? ''),
-    firstName: r.firstname ?? '',
-    lastName: r.surname ?? '',
-    email: r.email ?? '',
+    firstName: String(r.firstname ?? ''),
+    lastName: String(r.surname ?? ''),
+    email: String(r.email ?? ''),
   }
 }
 
