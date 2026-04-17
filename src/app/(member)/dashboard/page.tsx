@@ -6,7 +6,6 @@ import AttendanceStreak from "@/components/dashboard/AttendanceStreak";
 import AttendanceWidget from "@/components/dashboard/AttendanceWidget";
 import ChallengesPreview from "@/components/dashboard/ChallengesPreview";
 import AwardsPreview from "@/components/dashboard/AwardsPreview";
-import NextTestWeek from "@/components/dashboard/NextTestWeek";
 import GymEvents from "@/components/dashboard/GymEvents";
 import ContinueLearning from "@/components/education/ContinueLearning";
 import { SEED_PATHWAYS, SEED_MODULES } from "@/lib/education-seed";
@@ -63,17 +62,15 @@ export default async function DashboardPage() {
         {/* Commitment Club — monthly progress */}
         <AttendanceWidget />
 
+        {/* Gym Events — live from Staff Hub (moved up, replaces Next Test Week) */}
+        <GymEvents />
+
         {/* Active Challenges — live from Staff Hub */}
         <ChallengesPreview />
 
         {/* Latest Awards */}
         <AwardsPreview />
 
-        {/* Next Test Week */}
-        <NextTestWeek />
-
-        {/* Gym Events — live from Staff Hub */}
-        <GymEvents />
       </div>
     </div>
   );
