@@ -1,51 +1,20 @@
-// Gym Events widget — social events and competitions
-// Seed data — replace with Supabase announcements or a dedicated events table
+// Gym Events widget — async Server Component, fetches live data from Staff Hub
 
-type GymEvent = {
-  id: string
-  title: string
-  date: string        // ISO date string
-  type: 'social' | 'competition' | 'workshop' | 'other'
-  description?: string
-  location?: string
+import { fetchGymEvents } from '@/lib/staffhub'
+
+const EVENT_TYPE_CONFIG: Record<string, { emoji: string; colour: string; bg: string; border: string; label: string }> = {
+  social:      { emoji: '🎉', colour: 'text-brand',          bg: 'bg-brand/10',        border: 'border-brand/20',        label: 'Social' },
+  competition: { emoji: '🏆', colour: 'text-status-amber',   bg: 'bg-status-amber/10', border: 'border-status-amber/20', label: 'Competition' },
+  workshop:    { emoji: '📚', colour: 'text-text-primary',   bg: 'bg-border-light',    border: 'border-border-light',    label: 'Workshop' },
+  other:       { emoji: '📌', colour: 'text-text-secondary', bg: 'bg-bg-main',         border: 'border-border-light',    label: 'Event' },
 }
 
-const SEED_EVENTS: GymEvent[] = [
-  {
-    id: '1',
-    title: 'HSP Summer Social',
-    date: '2026-05-10',
-    type: 'social',
-    description: 'End of block celebration — food, drinks and prize giving. All members welcome.',
-    location: 'The Queensferry Arms',
-  },
-  {
-    id: '2',
-    title: 'Charity Deadlift Competition',
-    date: '2026-05-24',
-    type: 'competition',
-    description: 'In-house charity competition. Open to all levels. Sign-up sheet on the board.',
-    location: 'Number One HSP Gym',
-  },
-  {
-    id: '3',
-    title: 'Nutrition Workshop',
-    date: '2026-06-07',
-    type: 'workshop',
-    description: 'Deep dive into fuelling for performance with our head coach.',
-    location: 'Number One HSP Gym',
-  },
-]
-
-const TYPE_CONFIG = {
-  social:      { emoji: '🎉', colour: 'text-brand',         bg: 'bg-brand/10',         border: 'border-brand/20' },
-  competition: { emoji: '🏆', colour: 'text-status-amber',  bg: 'bg-status-amber/10',  border: 'border-status-amber/20' },
-  workshop:    { emoji: '📚', colour: 'text-text-primary',  bg: 'bg-border-light',     border: 'border-border-light' },
-  other:       { emoji: '📌', colour: 'text-text-secondary', bg: 'bg-bg-main',          border: 'border-border-light' },
+function getTypeConfig(eventType: string) {
+  return EVENT_TYPE_CONFIG[eventType] ?? EVENT_TYPE_CONFIG.other
 }
 
 function formatEventDate(isoDate: string) {
-  return new Date(isoDate).toLocaleDateString('en-GB', {
+  return new Date(isoDate + 'T00:00:00').toLocaleDateString('en-GB', {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
@@ -55,14 +24,12 @@ function formatEventDate(isoDate: string) {
 function daysUntil(isoDate: string) {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
-  const target = new Date(isoDate)
+  const target = new Date(isoDate + 'T00:00:00')
   return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
 }
 
-export default function GymEvents() {
-  const upcoming = SEED_EVENTS
-    .filter(e => daysUntil(e.date) >= 0)
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+export default async function GymEvents() {
+  const events = await fetchGymEvents()
 
   return (
     <div className="bg-bg-card border border-border-light rounded-2xl p-5 relative overflow-hidden shadow-sm">
@@ -78,13 +45,13 @@ export default function GymEvents() {
         <span className="text-xl">📅</span>
       </div>
 
-      {upcoming.length === 0 ? (
+      {events.length === 0 ? (
         <p className="text-sm text-text-secondary">No upcoming events — check back soon.</p>
       ) : (
         <div className="space-y-3">
-          {upcoming.map((event) => {
-            const cfg = TYPE_CONFIG[event.type]
-            const days = daysUntil(event.date)
+          {events.map((event) => {
+            const cfg = getTypeConfig(event.event_type)
+            const days = daysUntil(event.start_date)
             return (
               <div key={event.id} className={`rounded-xl p-3 border ${cfg.bg} ${cfg.border}`}>
                 <div className="flex items-start gap-2.5">
@@ -95,17 +62,12 @@ export default function GymEvents() {
                         {event.title}
                       </p>
                       <span className={`text-[10px] font-semibold shrink-0 ${cfg.colour}`}>
-                        {days === 0 ? 'Today!' : days === 1 ? 'Tomorrow' : formatEventDate(event.date)}
+                        {days === 0 ? 'Today!' : days === 1 ? 'Tomorrow' : formatEventDate(event.start_date)}
                       </span>
                     </div>
                     {event.description && (
-                      <p className="text-xs text-text-secondary leading-relaxed mb-1">
+                      <p className="text-xs text-text-secondary leading-relaxed">
                         {event.description}
-                      </p>
-                    )}
-                    {event.location && (
-                      <p className="text-[11px] text-text-secondary">
-                        📍 {event.location}
                       </p>
                     )}
                   </div>

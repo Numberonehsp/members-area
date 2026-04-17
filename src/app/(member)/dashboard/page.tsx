@@ -10,28 +10,15 @@ import NextTestWeek from "@/components/dashboard/NextTestWeek";
 import GymEvents from "@/components/dashboard/GymEvents";
 import ContinueLearning from "@/components/education/ContinueLearning";
 import { SEED_PATHWAYS, SEED_MODULES } from "@/lib/education-seed";
-
-// TODO Phase 1: replace with real Supabase + GymMaster data once auth is wired
-const SAMPLE_ANNOUNCEMENTS = [
-  {
-    id: "1",
-    title: "New testing block starts Monday 14th April",
-    body: "Make sure you've booked in for your testing session. Results will be available in your dashboard the same day.",
-    priority: "high",
-    published_at: new Date().toISOString(),
-  },
-  {
-    id: "2",
-    title: "Gym closed Easter Bank Holiday — Friday 18th & Monday 21st April",
-    body: null,
-    priority: "normal",
-    published_at: new Date().toISOString(),
-  },
-];
+import { fetchAnnouncements } from "@/lib/staffhub";
 
 export default async function DashboardPage() {
   const cookieStore = await cookies();
   const firstName = cookieStore.get("gymmaster_first_name")?.value || "there";
+
+  // Fetch live announcements from Staff Hub (replaces hardcoded sample data)
+  const announcements = await fetchAnnouncements();
+  const latestAnnouncement = announcements[0] ?? null;
 
   const inProgressPathway = SEED_PATHWAYS.find(
     (p) => (p.completed_count ?? 0) > 0 && (p.completed_count ?? 0) < (p.module_count ?? 0)
@@ -48,8 +35,8 @@ export default async function DashboardPage() {
       {/* Welcome */}
       <WelcomeBanner firstName={firstName} />
 
-      {/* Announcements */}
-      <AnnouncementBanner announcements={SAMPLE_ANNOUNCEMENTS} />
+      {/* Announcements — live from Staff Hub */}
+      <AnnouncementBanner announcement={latestAnnouncement} />
 
       {/* Quick Stats — 4 key metrics */}
       <QuickStats />
@@ -76,7 +63,7 @@ export default async function DashboardPage() {
         {/* Commitment Club — monthly progress */}
         <AttendanceWidget />
 
-        {/* Active Challenges */}
+        {/* Active Challenges — live from Staff Hub */}
         <ChallengesPreview />
 
         {/* Latest Awards */}
@@ -85,7 +72,7 @@ export default async function DashboardPage() {
         {/* Next Test Week */}
         <NextTestWeek />
 
-        {/* Gym Events */}
+        {/* Gym Events — live from Staff Hub */}
         <GymEvents />
       </div>
     </div>

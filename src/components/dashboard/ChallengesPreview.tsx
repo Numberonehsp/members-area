@@ -1,39 +1,19 @@
-import Link from 'next/link'
+// Challenges preview — async Server Component, fetches live data from Staff Hub
 
-type Challenge = {
-  id: string
-  title: string
-  description: string
-  current: number
-  target: number
-  unit: string
-  daysLeft: number
+import Link from 'next/link'
+import { fetchChallenges } from '@/lib/staffhub'
+
+function formatDateRange(start: string, end: string) {
+  const fmt = (d: string) =>
+    new Date(d + 'T00:00:00').toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'short',
+    })
+  return `${fmt(start)} — ${fmt(end)}`
 }
 
-// Seed data — replace with Supabase query
-const SEED_CHALLENGES: Challenge[] = [
-  {
-    id: '1',
-    title: 'April Attendance Challenge',
-    description: 'Hit 16 visits this month',
-    current: 9,
-    target: 16,
-    unit: 'visits',
-    daysLeft: 21,
-  },
-  {
-    id: '2',
-    title: 'Nutrition Pathway Sprint',
-    description: 'Complete 4 nutrition modules',
-    current: 2,
-    target: 4,
-    unit: 'modules',
-    daysLeft: 14,
-  },
-]
-
-export default function ChallengesPreview() {
-  if (SEED_CHALLENGES.length === 0) return null
+export default async function ChallengesPreview() {
+  const challenges = await fetchChallenges(3)
 
   return (
     <div className="bg-bg-card border border-border-light rounded-2xl p-5 relative overflow-hidden shadow-sm">
@@ -54,39 +34,30 @@ export default function ChallengesPreview() {
         </Link>
       </div>
 
-      <div className="space-y-4">
-        {SEED_CHALLENGES.map((challenge) => {
-          const pct = Math.min(Math.round((challenge.current / challenge.target) * 100), 100)
-          return (
-            <Link
-              key={challenge.id}
-              href={`/community/challenge/${challenge.id}`}
-              className="block group"
-            >
-              <div className="flex items-start justify-between mb-1">
-                <p className="text-sm font-medium text-text-primary group-hover:text-brand transition-colors">
-                  {challenge.title}
+      {challenges.length === 0 ? (
+        <p className="text-sm text-text-secondary">No active challenges right now.</p>
+      ) : (
+        <div className="space-y-3">
+          {challenges.map((challenge) => (
+            <div key={challenge.id} className="rounded-xl border border-border-light bg-bg-main p-3">
+              <div className="flex items-start justify-between gap-2 mb-1">
+                <p className="text-sm font-medium text-text-primary leading-tight">
+                  {challenge.name}
                 </p>
-                <span className="text-[10px] text-text-secondary shrink-0 ml-2">
-                  {challenge.daysLeft}d left
-                </span>
+                <Link
+                  href={`/community/challenge/${challenge.id}`}
+                  className="text-[10px] font-semibold text-brand shrink-0 hover:text-brand-dark transition-colors"
+                >
+                  View →
+                </Link>
               </div>
-              <p className="text-xs text-text-secondary mb-2">{challenge.description}</p>
-              <div className="flex items-center gap-2">
-                <div className="flex-1 h-1.5 bg-border-light rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-brand rounded-full transition-all"
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-                <span className="font-data text-xs text-text-secondary shrink-0">
-                  {challenge.current}/{challenge.target}
-                </span>
-              </div>
-            </Link>
-          )
-        })}
-      </div>
+              <p className="text-[11px] text-text-secondary">
+                {formatDateRange(challenge.start_date, challenge.end_date)}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
