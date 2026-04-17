@@ -1,36 +1,14 @@
 import Link from 'next/link'
+import { fetchAwards, StaffHubAward } from '@/lib/staffhub'
 
-type Award = {
-  id: string
-  memberName: string
-  awardType: 'athlete_of_the_month' | 'commitment_club' | 'achievement'
-  title: string
-  body?: string
-  month: string
-}
-
-// Seed data — replace with Supabase query
-const SEED_AWARDS: Award[] = [
-  {
-    id: '1',
-    memberName: 'Sarah Mitchell',
-    awardType: 'athlete_of_the_month',
-    title: 'Athlete of the Month — April 2026',
-    body: 'Incredible consistency and attitude throughout April. A true inspiration to the whole gym.',
-    month: 'April 2026',
-  },
-  {
-    id: '2',
-    memberName: 'Jamie Pearce',
-    awardType: 'commitment_club',
-    title: 'Commitment Club — April 2026',
-    body: '16 visits in April — smashed it!',
-    month: 'April 2026',
-  },
-]
-
-const AWARD_CONFIG = {
-  athlete_of_the_month: {
+const AWARD_CONFIG: Record<StaffHubAward['award_type'], {
+  emoji: string
+  label: string
+  colour: string
+  bg: string
+  border: string
+}> = {
+  athlete_of_month: {
     emoji: '🏆',
     label: 'Athlete of the Month',
     colour: 'text-status-amber',
@@ -44,17 +22,17 @@ const AWARD_CONFIG = {
     bg: 'bg-brand/10',
     border: 'border-brand/20',
   },
-  achievement: {
-    emoji: '⭐',
-    label: 'Achievement',
-    colour: 'text-text-primary',
-    bg: 'bg-border-light',
-    border: 'border-border-light',
-  },
 }
 
-export default function AwardsPreview() {
-  if (SEED_AWARDS.length === 0) return null
+function formatMonth(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00')
+  return d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+}
+
+export default async function AwardsPreview() {
+  const awards = await fetchAwards(6)
+
+  if (awards.length === 0) return null
 
   return (
     <div className="bg-bg-card border border-border-light rounded-2xl p-5 relative overflow-hidden shadow-sm">
@@ -63,7 +41,7 @@ export default function AwardsPreview() {
       <div className="flex items-center justify-between mb-4">
         <div>
           <p className="text-[10px] tracking-[0.2em] uppercase text-status-amber font-semibold mb-0.5">
-            This Month
+            Recent
           </p>
           <h2 className="font-semibold text-text-primary text-sm">Awards</h2>
         </div>
@@ -76,8 +54,8 @@ export default function AwardsPreview() {
       </div>
 
       <div className="space-y-3">
-        {SEED_AWARDS.map((award) => {
-          const cfg = AWARD_CONFIG[award.awardType]
+        {awards.map((award) => {
+          const cfg = AWARD_CONFIG[award.award_type]
           return (
             <div
               key={award.id}
@@ -86,15 +64,20 @@ export default function AwardsPreview() {
               <div className="flex items-start gap-2">
                 <span className="text-lg shrink-0">{cfg.emoji}</span>
                 <div className="flex-1 min-w-0">
-                  <p className={`text-xs font-semibold ${cfg.colour} mb-0.5`}>
-                    {cfg.label}
-                  </p>
+                  <div className="flex items-center justify-between gap-2 mb-0.5">
+                    <p className={`text-xs font-semibold ${cfg.colour}`}>
+                      {cfg.label}
+                    </p>
+                    <span className="text-[10px] text-text-secondary shrink-0">
+                      {formatMonth(award.month)}
+                    </span>
+                  </div>
                   <p className="text-sm font-medium text-text-primary truncate">
-                    {award.memberName}
+                    {award.member_name}
                   </p>
-                  {award.body && (
+                  {award.reason && (
                     <p className="text-xs text-text-secondary mt-1 line-clamp-2">
-                      {award.body}
+                      {award.reason}
                     </p>
                   )}
                 </div>
