@@ -59,11 +59,11 @@ export default async function DashboardPage() {
         {/* Attendance streak — weekly heatmap */}
         <AttendanceStreak />
 
+        {/* Gym Events — live from Staff Hub */}
+        <GymEvents />
+
         {/* Commitment Club — monthly progress */}
         <AttendanceWidget />
-
-        {/* Gym Events — live from Staff Hub (moved up, replaces Next Test Week) */}
-        <GymEvents />
 
         {/* Active Challenges — live from Staff Hub */}
         <ChallengesPreview />

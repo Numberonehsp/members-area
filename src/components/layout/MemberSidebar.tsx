@@ -22,7 +22,7 @@ export default function MemberSidebar() {
 
   return (
     <aside className="hidden md:flex fixed left-0 top-0 h-screen w-64 bg-bg-sidebar text-text-on-dark flex-col z-40">
-      <div className="bg-facets px-6 pt-7 pb-5 border-b border-white/10 relative overflow-hidden">
+      <div className="bg-facets px-6 pt-7 pb-5 border-b border-white/10 relative">
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-brand/10 to-transparent" />
         <div className="relative flex items-start justify-between">
           <div>
