@@ -1,26 +1,97 @@
 @import "tailwindcss";
 
+/* =============================================
+   Number One HSP — Members Area Design System
+   ============================================= */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Brand — teal pulled from the Number One HSP logo */
+  --brand-primary: #268384;
+  --brand-primary-dark: #166869;
+  --brand-primary-light: #2a9a9b;
+
+  /* Backgrounds */
+  --bg-main: #F4F7F7;          /* very light cool off-white */
+  --bg-card: #FFFFFF;
+  --bg-sidebar: #0a1f1f;       /* near-black with a teal tint */
+  --bg-sidebar-deep: #061414;  /* even darker for layered facets */
+
+  /* Text */
+  --text-primary: #0a1f1f;     /* dark teal-black for headings */
+  --text-secondary: #5b7373;   /* muted teal-grey */
+  --text-on-dark: #F4F7F7;
+  --text-on-dark-muted: rgba(244, 247, 247, 0.6);
+
+  /* Borders */
+  --border-light: #e2e8e8;
+
+  /* Status */
+  --status-green: #22C55E;
+  --status-amber: #F59E0B;
+  --status-red: #EF4444;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-brand: var(--brand-primary);
+  --color-brand-dark: var(--brand-primary-dark);
+  --color-brand-light: var(--brand-primary-light);
+  --color-bg-main: var(--bg-main);
+  --color-bg-card: var(--bg-card);
+  --color-bg-sidebar: var(--bg-sidebar);
+  --color-bg-sidebar-deep: var(--bg-sidebar-deep);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-on-dark: var(--text-on-dark);
+  --color-border-light: var(--border-light);
+  --color-status-green: var(--status-green);
+  --color-status-amber: var(--status-amber);
+  --color-status-red: var(--status-red);
+
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-anton);
+  --font-mono: var(--font-jetbrains-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+html,
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg-main);
+  color: var(--text-primary);
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
+
+/* Numeric / data text */
+.font-data {
+  font-family: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular,
+    monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Display headings — heavy condensed caps, echoing the logo */
+.font-display {
+  font-family: var(--font-anton), Impact, "Arial Narrow", sans-serif;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+
+/* Faceted brand backdrop — subtly echoes the triangulated logo texture.
+   Built from layered conic + linear gradients so it has zero asset weight. */
+.bg-facets {
+  background-color: var(--bg-sidebar);
+  background-image:
+    linear-gradient(135deg, rgba(38, 131, 132, 0.18) 0%, transparent 55%),
+    linear-gradient(45deg, rgba(38, 131, 132, 0.10) 0%, transparent 60%),
+    conic-gradient(
+      from 210deg at 30% 30%,
+      rgba(42, 154, 155, 0.18),
+      rgba(6, 20, 20, 0.0) 35%,
+      rgba(38, 131, 132, 0.14) 60%,
+      rgba(6, 20, 20, 0.0) 100%
+    ),
+    radial-gradient(
+      ellipse at 80% 90%,
+      rgba(6, 20, 20, 0.6),
+      transparent 70%
+    );
+}
+

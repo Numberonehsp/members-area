@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Members Area — Code Review Graph v2</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #061414; color: #e2e8f0; min-height: 100vh; }
+
+    header { background: #0a1f1f; border-bottom: 1px solid #1a3535; padding: 16px 24px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    header h1 { font-size: 18px; font-weight: 700; color: #fff; }
+    header .subtitle { font-size: 12px; color: #5b7373; background: #0f2828; padding: 3px 8px; border-radius: 4px; }
+    header .phase { font-size: 11px; color: #2a9a9b; background: #0a2828; border: 1px solid #268384; padding: 3px 8px; border-radius: 4px; font-weight: 600; }
+
+    .legend { display: flex; gap: 16px; padding: 12px 24px; background: #071818; border-bottom: 1px solid #122222; flex-wrap: wrap; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #94a3b8; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+
+    .graph { padding: 24px; display: flex; flex-direction: column; gap: 32px; }
+
+    .layer { display: flex; flex-direction: column; gap: 8px; }
+    .layer-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: #2a9a9b; padding-left: 4px; margin-bottom: 4px; border-left: 2px solid #268384; padding-left: 8px; }
+    .layer-row { display: flex; gap: 12px; flex-wrap: wrap; }
+
+    .card {
+      border-radius: 8px; padding: 12px 14px; border: 1px solid;
+      cursor: default; transition: transform 0.15s, box-shadow 0.15s;
+      min-width: 180px; max-width: 260px; flex: 1; position: relative;
+    }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+    .card-title { font-size: 13px; font-weight: 600; margin-bottom: 3px; }
+    .card-path { font-size: 10px; opacity: 0.5; font-family: monospace; margin-bottom: 6px; word-break: break-all; }
+    .card-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 6px; }
+    .tag { font-size: 10px; padding: 1px 6px; border-radius: 3px; font-weight: 500; }
+    .card-desc { font-size: 11px; opacity: 0.6; line-height: 1.4; }
+    .card-imports { font-size: 10px; margin-top: 6px; opacity: 0.5; font-family: monospace; }
+    .card-imports span { display: inline-block; background: rgba(255,255,255,0.06); padding: 1px 4px; border-radius: 2px; margin: 1px 2px 1px 0; }
+
+    /* ---- card types ---- */
+    /* Config / root */
+    .config   { background: #0f1f1f; border-color: #268384; }
+    .config .card-title { color: #2a9a9b; }
+    .tag-config { background: #0a2828; color: #2a9a9b; }
+
+    /* Layouts */
+    .layout   { background: #0d2020; border-color: #1a5555; }
+    .layout .card-title { color: #5ecfcf; }
+    .tag-layout { background: #0a2525; color: #5ecfcf; }
+
+    /* Pages — member */
+    .page-member { background: #0d1e2e; border-color: #1e4a7a; }
+    .page-member .card-title { color: #7dd3fc; }
+    .tag-page-member { background: #0c2444; color: #7dd3fc; }
+
+    /* Pages — coach */
+    .page-coach { background: #1a1228; border-color: #4a2d7a; }
+    .page-coach .card-title { color: #c4b5fd; }
+    .tag-page-coach { background: #2a1445; color: #c4b5fd; }
+
+    /* Components / layout */
+    .component { background: #0f1e14; border-color: #1e5530; }
+    .component .card-title { color: #86efac; }
+    .tag-component { background: #0c2e18; color: #86efac; }
+
+    /* Shared UI */
+    .shared { background: #1e180a; border-color: #5a4a10; }
+    .shared .card-title { color: #fcd34d; }
+    .tag-shared { background: #2e2408; color: #fcd34d; }
+
+    /* Lib / util */
+    .lib { background: #1a100a; border-color: #6a3a10; }
+    .lib .card-title { color: #fb923c; }
+    .tag-lib { background: #2e1a08; color: #fb923c; }
+
+    /* DB / schema */
+    .db { background: #100a1a; border-color: #3a1060; }
+    .db .card-title { color: #a78bfa; }
+    .tag-db { background: #1e0840; color: #a78bfa; }
+
+    /* Status badges */
+    .status-done  { background: #0a2e18; color: #4ade80; border: 1px solid #166534; }
+    .status-phase { background: #2e1a08; color: #fdba74; border: 1px solid #7c2d12; }
+
+    /* Phase annotation banners */
+    .phase-banner {
+      font-size: 11px; font-weight: 600; letter-spacing: 0.05em;
+      padding: 6px 12px; border-radius: 5px; background: #0f2828;
+      border: 1px solid #268384; color: #2a9a9b; align-self: flex-start;
+    }
+
+    /* Divider between route groups */
+    .group-divider { height: 1px; background: linear-gradient(90deg, #268384 0%, transparent 80%); margin: 8px 0; }
+
+    .note { font-size: 11px; color: #5b7373; font-style: italic; padding: 4px 0; }
+
+    footer { padding: 24px; font-size: 11px; color: #2a4444; border-top: 1px solid #0f2828; margin-top: 16px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Number One HSP — Members Area</h1>
+  <span class="subtitle">Next.js 16 App Router · Tailwind 4 · Supabase</span>
+  <span class="phase">Phase 1 — Pre-launch additions complete</span>
+</header>
+
+<div class="legend">
+  <div class="legend-item"><span class="dot" style="background:#2a9a9b"></span>Config / Root</div>
+  <div class="legend-item"><span class="dot" style="background:#5ecfcf"></span>Layouts</div>
+  <div class="legend-item"><span class="dot" style="background:#7dd3fc"></span>Member Pages</div>
+  <div class="legend-item"><span class="dot" style="background:#c4b5fd"></span>Coach Pages</div>
+  <div class="legend-item"><span class="dot" style="background:#86efac"></span>Layout Components</div>
+  <div class="legend-item"><span class="dot" style="background:#fcd34d"></span>Shared UI</div>
+  <div class="legend-item"><span class="dot" style="background:#fb923c"></span>Lib / Utils</div>
+  <div class="legend-item"><span class="dot" style="background:#a78bfa"></span>DB / Schema</div>
+</div>
+
+<div class="graph">
+
+  <!-- =========================================================
+       LAYER 1 — Root config & entry
+  ========================================================= -->
+  <div class="layer">
+    <div class="layer-label">Root — Config &amp; Entry</div>
+    <div class="layer-row">
+
+      <div class="card config">
+        <div class="card-title">Root Layout</div>
+        <div class="card-path">src/app/layout.tsx</div>
+        <div class="card-tags">
+          <span class="tag tag-config">Server Component</span>
+          <span class="tag status-done">✓ Built</span>
+        </div>
+        <div class="card-desc">Loads Inter + JetBrains Mono + Anton fonts. Sets html/body class. Wraps all routes.</div>
+        <div class="card-imports">
+          <span>next/font/google → Inter, JetBrains_Mono, Anton</span>
+          <span>globals.css</span>
+        </div>
+      </div>
+
+      <div class="card config">
+        <div class="card-title">Global CSS / Design System</div>
+        <div class="card-path">src/app/globals.css</div>
+        <div class="card-tags">
+          <span class="tag tag-config">CSS Variables</span>
+          <span class="tag status-done">✓ Built</span>
+        </div>
+        <div class="card-desc">All brand tokens: --brand-primary #268384 (teal), --bg-sidebar #0a1f1f, --text-primary #0a1f1f. .bg-facets utility. .font-display (Anton). .font-data (JetBrains Mono).</div>
+      </div>
+
+      <div class="card page-member">
+        <div class="card-title">Landing / Login Page</div>
+        <div class="card-path">src/app/page.tsx</div>
+        <div class="card-tags">
+          <span class="tag tag-page-member">Server Component</span>
+          <span class="tag tag-page-member">Route: /</span>
+          <span class="tag status-done">✓ Built</span>
+        </div>
+        <div class="card-desc">Faceted brand backdrop. Anton "MEMBERS AREA" headline. CTA → /dashboard. Coach login link → /coach/login. No layout wrapper (unwrapped route).</div>
+        <div class="card-imports"><span>next/link</span></div>
+      </div>
+
+      <div class="card db">
+        <div class="card-title">Database Schema</div>
+        <div class="card-path">supabase-schema.sql</div>
+        <div class="card-tags">
+          <span class="tag tag-db">PostgreSQL</span>
+          <span class="tag status-done">✓ Written</span>
+          <span class="tag status-phase">Run in Supabase</span>
+        </div>
+        <div class="card-desc"><strong>14 tables:</strong> members (+ coach_notes, consent_recorded_at, last_visit_date, last_portal_login_at), inbody_scans, sc_test_types, sc_test_results, education_pathways, education_modules, member_module_progress, education_resources, attendance_log, community_challenges, challenge_entries, member_awards, gym_partners, <strong>announcements</strong> (new). RLS enabled on all.</div>
+      </div>
+
+      <div class="card lib">
+        <div class="card-title">Supabase Client</div>
+        <div class="card-path">src/lib/supabase.ts</div>
+        <div class="card-tags">
+          <span class="tag tag-lib">Lib</span>
+          <span class="tag status-done">✓ Built</span>
+        </div>
+        <div class="card-desc">createClient() using NEXT_PUBLIC_SUPABASE_URL + NEXT_PUBLIC_SUPABASE_ANON_KEY. Import from here for all DB queries.</div>
+        <div class="card-imports"><span>@supabase/supabase-js</span></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- =========================================================
+       LAYER 2 — Layouts
+  ========================================================= -->
+  <div class="layer">
+    <div class="layer-label">Layouts — Route Groups</div>
+    <div class="layer-row">
+
+      <div class="card layout">
+        <div class="card-title">Member Layout</div>
+        <div class="card-path">src/app/(member)/layout.tsx</div>
+        <div class="card-tags">
+          <span class="tag tag-layout">Server Component</span>
+          <span class="tag tag-layout">Route group: (member)</span>
+          <span class="tag status-done">✓ Built</span>
+        </div>
+        <div class="card-desc">Wraps all /dashboard, /education, /results, /community, /partners, /profile routes. Renders MemberSidebar (desktop) + MemberMobileNav (mobile). No auth check yet — Phase 1.</div>
+        <div class="card-imports">
+          <span>MemberSidebar</span>
+          <span>MemberMobileNav</span>
+        </div>
+      </div>
+
+      <div class="card layout">
+        <div class="card-title">Coach Portal Layout</div>
+        <div class="card-path">src/app/coach/(portal)/layout.tsx</div>
+        <div class="card-tags">
+          <span class="tag tag-layout">Server Component</span>
+          <span class="tag tag-layout">Route group: coach/(portal)</span>
+          <span class="tag status-done">✓ Built</span>
+        </div>
+        <div class="card-desc">Wraps all /coach/* pages EXCEPT /coach/login (which sits outside this group, unwrapped). Renders CoachSidebar + CoachMobileNav. No auth check yet — Phase 1.</div>
+        <div class="card-imports">
+          <span>CoachSidebar</span>
+          <span>CoachMobileNav</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- =========================================================
+       LAYER 3 — Layout Components
+  ========================================================= -->
+  <div class="layer">
+    <div class="layer-label">Layout Components</div>
+    <div class="layer-row">
+
+      <div class="card component">
+        <div class="card-title">MemberSidebar</div>
+        <div class="card-path">src/components/layout/MemberSidebar.tsx</div>
+        <div class="card-tags">
+          <span class="tag tag-component">'use client'</span>
+          <span class="tag status-done">✓ Built</span>
+        </div>
+        <div class="card-desc">Fixed left sidebar, hidden on mobile (md:flex). Dark teal #0a1f1f background. Faceted header with Anton display font. 5 nav items: Dashboard, Learn, Results, Community, Partners. Active state = teal highlight + right border. Profile link in footer.</div>
+        <div class="card-imports"><span>next/link</span><span>usePathname</span><span>inline SVG icons</span></div>
+      </div>
+
+      <div class="card component">
+        <div class="card-title">MemberMobileNav</div>
+        <div class="card-path">src/components/layout/MemberMobileNav.tsx</div>
+        <div class="card-tags">
+          <span class="tag tag-component">'use client'</span>
+          <span class="tag status-done">✓ Built</span>
+        </div>
+        <div class="card-desc">Fixed bottom tab bar, visible only on mobile (md:hidden). 5 tabs matching sidebar nav. safe-area-inset-bottom for iPhone notch. Teal active colour.</div>
+        <div class="card-imports"><span>next/link</span><span>usePathname</span></div>
+      </div>
+
+      <div class="card component">
+        <div class="card-title">CoachSidebar</div>
+        <div class="card-path">src/components/layout/CoachSidebar.tsx</div>
+        <div class="card-tags">
+          <span class="tag tag-component">'use client'</span>
+          <span class="tag status-done">✓ Built</span>
+        </div>
+        <div class="card-desc">Same dark teal base as MemberSidebar. Anton "COACH / PORTAL" header. 9 nav items: Dashboard, Members, InBody Input, S&amp;C Testing, Manage Tests, Content, Community, Partners, Reports. "Signed in as Coach" footer (placeholder).</div>
+        <div class="card-imports"><span>next/link</span><span>usePathname</span></div>
+      </div>
+
+      <div class="card component">
+        <div class="card-title">CoachMobileNav</div>
+        <div class="card-path">src/components/layout/CoachMobileNav.tsx</div>
+        <div class="card-tags">
+          <span class="tag tag-component">'use client'</span>
+          <span class="tag status-done">✓ Built</span>
+        </div>
+        <div class="card-desc">Coach bottom tab bar (mobile only). 5 tabs: Dashboard, Members, Input, Content, Reports.</div>
+        <div class="card-imports"><span>next/link</span><span>usePathname</span></div>
+      </div>
+
+      <div class="card shared">
+        <div class="card-title">PlaceholderPage</div>
+        <div class="card-path">src/components/PlaceholderPage.tsx</div>
+        <div class="card-tags">
+          <span class="tag tag-shared">Shared UI</span>
+          <span class="tag status-done">✓ Built</span>
+        </div>
+        <div class="card-desc">Renders eyebrow text, Anton display headline, description, and a Phase 1 skeleton card with teal top-border accent strip. Used by every placeholder page. Replace with real content as phases are built.</div>
+      </div>
+
+      <div class="card shared">
+        <div class="card-title">AnnouncementBanner</div>
+        <div class="card-path">src/components/dashboard/AnnouncementBanner.tsx</div>
+        <div class="card-tags">
+          <span class="tag tag-shared">Dashboard Widget</span>
+          <span class="tag status-done">✓ Built</span>
+        </div>
+        <div class="card-desc">Renders a list of announcements above dashboard widgets. High-priority items get a teal left-border accent and 📌 pin icon. Normal items get a plain card. Date shown top-right. Used in /dashboard. Props: announcements[] from Supabase.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- =========================================================
+       LAYER 4 — Member Pages
+  ========================================================= -->
+  <div class="layer">
+    <div class="layer-label">Member Pages — Route group (member)</div>
+    <div class="note">All wrapped by src/app/(member)/layout.tsx · All use PlaceholderPage · All return 200 ✓</div>
+    <div class="layer-row">
+
+      <div class="card page-member">
+        <div class="card-title">Dashboard</div>
+        <div class="card-path">src/app/(member)/dashboard/page.tsx</div>
+        <div class="card-tags"><span class="tag tag-page-member">Route: /dashboard</span><span class="tag status-done">✓ Skeleton built</span></div>
+        <div class="card-desc">AnnouncementBanner at top (Supabase query commented in for Phase 1 wiring). Widget grid: Continue Learning (Ph2), Quick Stats (Ph3), Attendance Streak (Ph1), Active Challenges (Ph4), Latest Awards (Ph4). Phase tags on each card.</div>
+      </div>
+
+      <div class="card page-member">
+        <div class="card-title">Education Hub</div>
+        <div class="card-path">src/app/(member)/education/page.tsx</div>
+        <div class="card-tags"><span class="tag tag-page-member">Route: /education</span><span class="tag status-phase">Phase 2</span></div>
+        <div class="card-desc">Category tabs (All / Nutrition / Training / Recovery / Mindset). Structured Pathways grid. Open Library section.</div>
+      </div>
+
+      <div class="card page-member">
+        <div class="card-title">Open Library</div>
+        <div class="card-path">src/app/(member)/education/library/page.tsx</div>
+        <div class="card-tags"><span class="tag tag-page-member">Route: /education/library</span><span class="tag status-phase">Phase 2</span></div>
+        <div class="card-desc">Filterable grid of standalone videos, PDFs, articles, links.</div>
+      </div>
+
+      <div class="card page-member">
+        <div class="card-title">Pathway Detail</div>
+        <div class="card-path">src/app/(member)/education/pathway/[id]/page.tsx</div>
+        <div class="card-tags"><span class="tag tag-page-member">Route: /education/pathway/[id]</span><span class="tag status-phase">Phase 2</span></div>
+        <div class="card-desc">Module list with progress. Sequential lock if is_sequential = true. Uses async params (Next 16 pattern).</div>
+      </div>
+
+      <div class="card page-member">
+        <div class="card-title">Module View</div>
+        <div class="card-path">src/app/(member)/education/module/[id]/page.tsx</div>
+        <div class="card-tags"><span class="tag tag-page-member">Route: /education/module/[id]</span><span class="tag status-phase">Phase 2</span></div>
+        <div class="card-desc">YouTube embed, PDF download, Mark as Complete, optional quiz, prev/next nav.</div>
+      </div>
+
+      <div class="card page-member">
+        <div class="card-title">Results Overview</div>
+        <div class="card-path">src/app/(member)/results/page.tsx</div>
+        <div class="card-tags"><span class="tag tag-page-member">Route: /results</span><span class="tag status-phase">Phase 3</span></div>
+        <div class="card-desc">Entry point — links to /results/body-composition and /results/strength.</div>
+      </div>
+
+      <div class="card page-member">
+        <div class="card-title">Body Composition</div>
+        <div class="card-path">src/app/(member)/results/body-composition/page.tsx</div>
+        <div class="card-tags"><span class="tag tag-page-member">Route: /results/body-composition</span><span class="tag status-phase">Phase 3</span></div>
+        <div class="card-desc">Latest InBody stat cards (weight, SMM, BF%, BFM), trend charts, scan history table. Reads inbody_scans.</div>
+      </div>
+
+      <div class="card page-member">
+        <div class="card-title">S&amp;C Dashboard</div>
+        <div class="card-path">src/app/(member)/results/strength/page.tsx</div>
+        <div class="card-tags"><span class="tag tag-page-member">Route: /results/strength</span><span class="tag status-phase">Phase 3</span></div>
+        <div class="card-desc">Testing block selector, results grid, per-test trend charts, PB badges. Reads sc_test_results + sc_test_types.</div>
+      </div>
+
+      <div class="card page-member">
+        <div class="card-title">Community Hub</div>
+        <div class="card-path">src/app/(member)/community/page.tsx</div>
+        <div class="card-tags"><span class="tag tag-page-member">Route: /community</span><span class="tag status-phase">Phase 4</span></div>
+        <div class="card-desc">Active challenges, attendance leaderboard, current month awards. Reads community_challenges, attendance_log, member_awards.</div>
+      </div>
+
+      <div class="card page-member">
+        <div class="card-title">Challenge Detail</div>
+        <div class="card-path">src/app/(member)/community/challenge/[id]/page.tsx</div>
+        <div class="card-tags"><span class="tag tag-page-member">Route: /community/challenge/[id]</span><span class="tag status-phase">Phase 4</span></div>
+        <div class="card-desc">Progress tracker, ranked leaderboard, countdown. Reads challenge_entries.</div>
+      </div>
+
+      <div class="card page-member">
+        <div class="card-title">Awards Archive</div>
+        <div class="card-path">src/app/(member)/community/awards/page.tsx</div>
+        <div class="card-tags"><span class="tag tag-page-member">Route: /community/awards</span><span class="tag status-phase">Phase 4</span></div>
+        <div class="card-desc">Athlete of the Month, Commitment Club, achievements. Grouped by month. Reads member_awards.</div>
+      </div>
+
+      <div class="card page-member">
+        <div class="card-title">Gym Partners</div>
+        <div class="card-path">src/app/(member)/partners/page.tsx</div>
+        <div class="card-tags"><span class="tag tag-page-member">Route: /partners</span><span class="tag status-phase">Phase 4</span></div>
+        <div class="card-desc">Grid of local partner cards with logo, description, Visit link. Reads gym_partners.</div>
+      </div>
+
+      <div class="card page-member">
+        <div class="card-title">My Profile</div>
+        <div class="card-path">src/app/(member)/profile/page.tsx</div>
+        <div class="card-tags"><span class="tag tag-page-member">Route: /profile</span><span class="tag status-done">✓ Skeleton built</span></div>
+        <div class="card-desc">4 panels: Personal Details (read-only from GymMaster), Membership &amp; Billing (status, type, renewal date, last payment — from GymMaster memberships API), Notifications (4 preference toggles), Data &amp; Privacy (GDPR — data export + deletion request links).</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- =========================================================
+       LAYER 5 — Coach Pages
+  ========================================================= -->
+  <div class="layer">
+    <div class="layer-label">Coach Pages — src/app/coach/</div>
+    <div class="note">Portal pages wrapped by coach/(portal)/layout.tsx · /coach/login is unwrapped · All use PlaceholderPage · All return 200 ✓</div>
+    <div class="layer-row">
+
+      <div class="card page-coach">
+        <div class="card-title">Coach Login</div>
+        <div class="card-path">src/app/coach/login/page.tsx</div>
+        <div class="card-tags"><span class="tag tag-page-coach">Route: /coach/login</span><span class="tag status-phase">Phase 1 — wire up</span></div>
+        <div class="card-desc">Standalone (no layout wrapper). Faceted teal backdrop. CTA → /coach. Full Supabase Auth email/password login to be wired here.</div>
+      </div>
+
+      <div class="card page-coach">
+        <div class="card-title">Coach Dashboard</div>
+        <div class="card-path">src/app/coach/(portal)/page.tsx</div>
+        <div class="card-tags"><span class="tag tag-page-coach">Route: /coach</span><span class="tag status-done">✓ Skeleton built</span></div>
+        <div class="card-desc">4 summary stat cards (total, engaged, at-risk, disengaged). 🔴 Re-engagement alert banner for members 21+ days absent — links directly to their profile. Member engagement table: name, last visit, visits/month, education progress bar, traffic light status badge. 5 quick action buttons. Engagement status logic: getEngagementStatus() function (pure, ready to swap sample data for real queries).</div>
+      </div>
+
+      <div class="card page-coach">
+        <div class="card-title">All Members</div>
+        <div class="card-path">src/app/coach/(portal)/members/page.tsx</div>
+        <div class="card-tags"><span class="tag tag-page-coach">Route: /coach/members</span><span class="tag status-phase">Phase 1</span></div>
+        <div class="card-desc">Searchable/filterable member list. Sort by engagement, last visit, education progress. Reads members + attendance_log.</div>
+      </div>
+
+      <div class="card page-coach">
+        <div class="card-title">Member Detail</div>
+        <div class="card-path">src/app/coach/(portal)/members/[id]/page.tsx</div>
+        <div class="card-tags"><span class="tag tag-page-coach">Route: /coach/members/[id]</span><span class="tag status-done">✓ Skeleton built</span></div>
+        <div class="card-desc">3-column layout: Left = Member Profile card (from GymMaster) + Coach Notes textarea (saves to members.coach_notes — internal, never shown to member). Right (2col) = 4 data panels: Body Comp History (Ph3), S&amp;C Results (Ph3), Education Progress (Ph2), Attendance Log (Ph1). ← All Members back link.</div>
+      </div>
+
+      <div class="card page-coach">
+        <div class="card-title">InBody Data Entry</div>
+        <div class="card-path">src/app/coach/(portal)/input/inbody/page.tsx</div>
+        <div class="card-tags"><span class="tag tag-page-coach">Route: /coach/input/inbody</span><span class="tag status-phase">Phase 3</span></div>
+        <div class="card-desc">Member selector → date → weight/SMM/BF%/BFM fields → save. Writes to inbody_scans. Validation: 30–250kg range etc.</div>
+      </div>
+
+      <div class="card page-coach">
+        <div class="card-title">S&amp;C Testing Entry</div>
+        <div class="card-path">src/app/coach/(portal)/input/testing/page.tsx</div>
+        <div class="card-tags"><span class="tag tag-page-coach">Route: /coach/input/testing</span><span class="tag status-phase">Phase 3</span></div>
+        <div class="card-desc">Step 1: block, Step 2: member, Step 3: all active tests. Auto-PB detection. "Save &amp; Next Member" for batch entry. Writes to sc_test_results.</div>
+      </div>
+
+      <div class="card page-coach">
+        <div class="card-title">Manage Test Types</div>
+        <div class="card-path">src/app/coach/(portal)/input/testing/manage/page.tsx</div>
+        <div class="card-tags"><span class="tag tag-page-coach">Route: /coach/input/testing/manage</span><span class="tag status-phase">Phase 3</span></div>
+        <div class="card-desc">Add/edit/reorder/deactivate test types. Configurable name, unit, higher_is_better toggle. Writes to sc_test_types.</div>
+      </div>
+
+      <div class="card page-coach">
+        <div class="card-title">Content Manager</div>
+        <div class="card-path">src/app/coach/(portal)/content/page.tsx</div>
+        <div class="card-tags"><span class="tag tag-page-coach">Route: /coach/content</span><span class="tag status-phase">Phase 2</span></div>
+        <div class="card-desc">Create/edit pathways and modules. PDF upload to Supabase Storage. YouTube URL. Publish/unpublish toggle. Reads/writes education_pathways + education_modules + education_resources.</div>
+      </div>
+
+      <div class="card page-coach">
+        <div class="card-title">Community Manager</div>
+        <div class="card-path">src/app/coach/(portal)/community/page.tsx</div>
+        <div class="card-tags"><span class="tag tag-page-coach">Route: /coach/community</span><span class="tag status-done">✓ Skeleton built</span></div>
+        <div class="card-desc">3 panels: Announcements (Phase 1 — title + body + high-priority toggle, posts to announcements table, shown on member dashboard), Challenges (Phase 4), Awards (Phase 4).</div>
+      </div>
+
+      <div class="card page-coach">
+        <div class="card-title">Partner Manager</div>
+        <div class="card-path">src/app/coach/(portal)/partners/page.tsx</div>
+        <div class="card-tags"><span class="tag tag-page-coach">Route: /coach/partners</span><span class="tag status-phase">Phase 4</span></div>
+        <div class="card-desc">Add/edit/reorder/deactivate gym partners. Logo upload to Supabase Storage. Writes to gym_partners.</div>
+      </div>
+
+      <div class="card page-coach">
+        <div class="card-title">Engagement Reports</div>
+        <div class="card-path">src/app/coach/(portal)/reports/page.tsx</div>
+        <div class="card-tags"><span class="tag tag-page-coach">Route: /coach/reports</span><span class="tag status-phase">Phase 5</span></div>
+        <div class="card-desc">Education completion rates, attendance trends, member engagement scores over time. Charts via Recharts.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- =========================================================
+       LAYER 6 — API Routes (to be built)
+  ========================================================= -->
+  <div class="layer">
+    <div class="layer-label">API Routes — To Be Built</div>
+    <div class="note">All GymMaster API calls must go through these routes — API keys must never reach the client.</div>
+    <div class="layer-row">
+
+      <div class="card lib" style="opacity:0.7">
+        <div class="card-title">GymMaster: Member Auth</div>
+        <div class="card-path">src/app/api/auth/login/route.ts</div>
+        <div class="card-tags"><span class="tag tag-lib">API Route</span><span class="tag status-phase">Phase 1</span></div>
+        <div class="card-desc">POST GymMaster /api/v1/member/login. Returns token + memberid. Sets httpOnly cookie session. Creates/updates members row in Supabase.</div>
+      </div>
+
+      <div class="card lib" style="opacity:0.7">
+        <div class="card-title">Coach Auth</div>
+        <div class="card-path">src/app/api/auth/coach-login/route.ts</div>
+        <div class="card-tags"><span class="tag tag-lib">API Route</span><span class="tag status-phase">Phase 1</span></div>
+        <div class="card-desc">Supabase Auth email+password login for the coach account. Sets session cookie.</div>
+      </div>
+
+      <div class="card lib" style="opacity:0.7">
+        <div class="card-title">Attendance Sync</div>
+        <div class="card-path">src/app/api/sync/attendance/route.ts</div>
+        <div class="card-tags"><span class="tag tag-lib">API Route</span><span class="tag status-phase">Phase 1</span></div>
+        <div class="card-desc">Nightly cron (Vercel). Pulls /api/v1/member/visits from GymMaster for all members. Upserts into attendance_log.</div>
+      </div>
+
+      <div class="card lib" style="opacity:0.7">
+        <div class="card-title">Member Data Sync</div>
+        <div class="card-path">src/app/api/sync/members/route.ts</div>
+        <div class="card-tags"><span class="tag tag-lib">API Route</span><span class="tag status-phase">Phase 1</span></div>
+        <div class="card-desc">Syncs name, email, DOB, phone, membership status from GymMaster into Supabase members table.</div>
+      </div>
+
+      <div class="card lib" style="opacity:0.7">
+        <div class="card-title">InBody Webhook</div>
+        <div class="card-path">src/app/api/webhooks/inbody/route.ts</div>
+        <div class="card-tags"><span class="tag tag-lib">API Route</span><span class="tag status-phase">Phase 5</span></div>
+        <div class="card-desc">Receives LookinBody Web push webhook. Matches by phone → member_id. Inserts into inbody_scans with entered_by='api'.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- =========================================================
+       LAYER 7 — Middleware (to be built)
+  ========================================================= -->
+  <div class="layer">
+    <div class="layer-label">Middleware &amp; Auth (To Be Built — Phase 1)</div>
+    <div class="layer-row">
+
+      <div class="card lib" style="opacity:0.7">
+        <div class="card-title">Route Middleware</div>
+        <div class="card-path">src/middleware.ts</div>
+        <div class="card-tags"><span class="tag tag-lib">Edge Middleware</span><span class="tag status-phase">Phase 1</span></div>
+        <div class="card-desc">Checks session cookie on every request. /dashboard/* → requires member session. /coach/* (except /coach/login) → requires coach session. Expired GymMaster token → redirect to /. Uses @supabase/ssr.</div>
+      </div>
+
+      <div class="card lib" style="opacity:0.7">
+        <div class="card-title">Auth Utilities</div>
+        <div class="card-path">src/lib/auth.ts</div>
+        <div class="card-tags"><span class="tag tag-lib">Lib</span><span class="tag status-phase">Phase 1</span></div>
+        <div class="card-desc">getSession(), validateGymMasterToken(), createCoachSession(). Helper functions for middleware + API routes.</div>
+      </div>
+
+      <div class="card lib" style="opacity:0.7">
+        <div class="card-title">GymMaster API Helper</div>
+        <div class="card-path">src/lib/gymmaster.ts</div>
+        <div class="card-tags"><span class="tag tag-lib">Lib</span><span class="tag status-phase">Phase 1</span></div>
+        <div class="card-desc">fetch wrappers for GymMaster endpoints. Uses GYMMASTER_STAFF_API_KEY (server-only). loginMember(), getMemberAccount(), getMemberVisits(), getMemberships().</div>
+      </div>
+
+      <div class="card lib" style="opacity:0.7">
+        <div class="card-title">Shared Utils</div>
+        <div class="card-path">src/lib/utils.ts</div>
+        <div class="card-tags"><span class="tag tag-lib">Lib</span><span class="tag status-phase">All phases</span></div>
+        <div class="card-desc">Date formatters, number formatters, engagement score logic, trend arrow helpers.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- =========================================================
+       LAYER 8 — DB Tables Reference
+  ========================================================= -->
+  <div class="layer">
+    <div class="layer-label">Database Tables (Supabase) — Run supabase-schema.sql to create</div>
+    <div class="layer-row">
+
+      <div class="card db">
+        <div class="card-title">members</div>
+        <div class="card-tags"><span class="tag tag-db">Core</span><span class="tag status-done">✓ Updated</span><span class="tag status-phase">Phase 1</span></div>
+        <div class="card-desc">gymmaster_member_id (BIGINT UNIQUE), email, first_name, last_name, DOB, phone, avatar_url, membership_status. <strong>New fields:</strong> coach_notes (TEXT, internal), consent_recorded_at (TIMESTAMPTZ, GDPR), last_visit_date, last_portal_login_at (for engagement status logic).</div>
+      </div>
+
+      <div class="card db">
+        <div class="card-title">inbody_scans</div>
+        <div class="card-tags"><span class="tag tag-db">Results</span><span class="tag status-phase">Phase 3</span></div>
+        <div class="card-desc">→ members. weight_kg, skeletal_muscle_mass_kg, body_fat_percent, body_fat_mass_kg, entered_by (coach/api).</div>
+      </div>
+
+      <div class="card db">
+        <div class="card-title">sc_test_types + sc_test_results</div>
+        <div class="card-tags"><span class="tag tag-db">Results</span><span class="tag status-phase">Phase 3</span></div>
+        <div class="card-desc">test_types: name, unit, higher_is_better, display_order. test_results: → members → test_types, testing_block, result, is_personal_best.</div>
+      </div>
+
+      <div class="card db">
+        <div class="card-title">education_pathways + modules + progress</div>
+        <div class="card-tags"><span class="tag tag-db">Education</span><span class="tag status-phase">Phase 2</span></div>
+        <div class="card-desc">pathways: category, is_sequential. modules: pathway_id, module_order, video_url, pdf_url. progress: member_id + module_id, status, quiz_score.</div>
+      </div>
+
+      <div class="card db">
+        <div class="card-title">attendance_log</div>
+        <div class="card-tags"><span class="tag tag-db">Core</span><span class="tag status-phase">Phase 1</span></div>
+        <div class="card-desc">→ members. visit_date (UNIQUE per member). Synced nightly from GymMaster. Powers streak, leaderboards, engagement status.</div>
+      </div>
+
+      <div class="card db">
+        <div class="card-title">announcements</div>
+        <div class="card-tags"><span class="tag tag-db">New</span><span class="tag status-done">✓ In schema</span><span class="tag status-phase">Phase 1</span></div>
+        <div class="card-desc">title, body, priority (normal/high), is_published, published_at, expires_at (auto-hide), created_by. Written by coach, read by member dashboard.</div>
+      </div>
+
+      <div class="card db">
+        <div class="card-title">community_challenges + entries</div>
+        <div class="card-tags"><span class="tag tag-db">Community</span><span class="tag status-phase">Phase 4</span></div>
+        <div class="card-desc">challenges: type (attendance/education/custom), target_value, date range. entries: current_value, is_completed.</div>
+      </div>
+
+      <div class="card db">
+        <div class="card-title">member_awards</div>
+        <div class="card-tags"><span class="tag tag-db">Community</span><span class="tag status-phase">Phase 4</span></div>
+        <div class="card-desc">→ members. award_type (athlete_of_the_month / commitment_club / achievement), title, body, image_url, award_month.</div>
+      </div>
+
+      <div class="card db">
+        <div class="card-title">gym_partners</div>
+        <div class="card-tags"><span class="tag tag-db">Community</span><span class="tag status-phase">Phase 4</span></div>
+        <div class="card-desc">name, description, logo_url (Supabase Storage), website_url, display_order, is_active.</div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  Generated: April 2026 · v2 · Phase 1 skeleton + pre-launch additions complete · New: announcements, coach notes, billing summary, re-engagement flags, PWA manifest · Next: wire GymMaster auth (Phase 1 continued), then Education Hub (Phase 2)
+</footer>
+
+</body>
+</html>

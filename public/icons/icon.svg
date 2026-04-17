@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Background -->
+  <rect width="512" height="512" rx="80" fill="#0a1f1f"/>
+  <!-- Subtle facet gradient overlay -->
+  <defs>
+    <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#268384;stop-opacity:0.4"/>
+      <stop offset="100%" style="stop-color:#061414;stop-opacity:0"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="80" fill="url(#g1)"/>
+  <!-- "1" numeral in brand teal -->
+  <text
+    x="256"
+    y="340"
+    font-family="Impact, Arial Narrow, sans-serif"
+    font-size="340"
+    font-weight="900"
+    text-anchor="middle"
+    fill="#268384"
+  >1</text>
+  <!-- "N" small label above -->
+  <text
+    x="256"
+    y="130"
+    font-family="Impact, Arial Narrow, sans-serif"
+    font-size="80"
+    font-weight="700"
+    text-anchor="middle"
+    fill="#2a9a9b"
+    letter-spacing="16"
+  >N</text>
+</svg>
