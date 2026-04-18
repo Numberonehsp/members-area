@@ -201,3 +201,35 @@ export async function isMemberSignedUp(challengeId: string, gymMasterId: string)
     return false
   }
 }
+
+export type MemberEvent = {
+  id: string
+  gymmaster_member_id: string
+  member_name: string
+  event_name: string
+  event_date: string   // ISO date 'YYYY-MM-DD'
+  created_at: string
+}
+
+/**
+ * Fetch upcoming events for a single member, ordered by event date ascending.
+ * Used by the EventPlanner server component on the Goals page.
+ */
+export async function fetchMemberEvents(gymMasterId: string): Promise<MemberEvent[]> {
+  if (!STAFFHUB_URL || !STAFFHUB_ANON_KEY) return []
+  try {
+    const { data, error } = await staffHubReader
+      .from('member_events')
+      .select('id, gymmaster_member_id, member_name, event_name, event_date, created_at')
+      .eq('gymmaster_member_id', gymMasterId)
+      .order('event_date', { ascending: true })
+    if (error) {
+      console.warn('[StaffHub] fetchMemberEvents failed:', error.message)
+      return []
+    }
+    return data ?? []
+  } catch (err) {
+    console.warn('[StaffHub] fetchMemberEvents threw:', err)
+    return []
+  }
+}
