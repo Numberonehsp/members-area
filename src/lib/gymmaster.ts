@@ -223,6 +223,68 @@ export async function getMonthlyVisits(
 }
 
 /**
+ * Fetch all 12 months of visit data for a member in a single API call.
+ * The GymMaster /member/visits/monthly endpoint always returns the full
+ * current-year array regardless of params — so we call it once and parse
+ * all months rather than making repeated calls.
+ */
+export async function getAnnualVisits(
+  gymMasterId: string | number,
+  memberToken?: string
+): Promise<Array<{ month: number; visitCount: number }>> {
+  const seed = Array.from({ length: 12 }, (_, i) => ({
+    month: i + 1,
+    visitCount: SEED_VISITS.visitDates.length > 0 && i + 1 === SEED_VISITS.month
+      ? SEED_VISITS.visitCount
+      : 0,
+  }))
+
+  if (!SITE_NAME || (!MEMBER_API_KEY && !memberToken)) return seed
+
+  const token = memberToken ?? MEMBER_API_KEY
+  const url = `${baseUrl()}/member/visits/monthly?token=${encodeURIComponent(token)}&api_key=${encodeURIComponent(MEMBER_API_KEY)}`
+
+  let res: Response
+  try {
+    res = await fetch(url, { next: { revalidate: 300 } })
+  } catch {
+    console.warn('[GymMaster] getAnnualVisits: fetch threw — returning zeros')
+    return seed.map(m => ({ ...m, visitCount: 0 }))
+  }
+
+  if (!res.ok) {
+    console.warn(`[GymMaster] getAnnualVisits: ${res.status} — returning zeros`)
+    return seed.map(m => ({ ...m, visitCount: 0 }))
+  }
+
+  let data: { error?: string | null; result?: unknown }
+  try {
+    data = await res.json()
+  } catch {
+    console.warn('[GymMaster] getAnnualVisits: JSON parse failed — returning zeros')
+    return seed.map(m => ({ ...m, visitCount: 0 }))
+  }
+
+  if (data.error || !data.result || !Array.isArray(data.result)) {
+    console.warn(`[GymMaster] getAnnualVisits: unexpected shape — returning zeros`)
+    return seed.map(m => ({ ...m, visitCount: 0 }))
+  }
+
+  // Build a map from the response array: { month: number, visits: number }[]
+  const responseMap = new Map<number, number>()
+  for (const entry of data.result as Array<{ month?: number; visits?: number; count?: number }>) {
+    if (entry.month != null) {
+      responseMap.set(entry.month, entry.visits ?? entry.count ?? 0)
+    }
+  }
+
+  return Array.from({ length: 12 }, (_, i) => ({
+    month: i + 1,
+    visitCount: responseMap.get(i + 1) ?? 0,
+  }))
+}
+
+/**
  * Fetch visit counts for ALL active members for the current month.
  * Uses the Staff API key — coach portal only.
  */

@@ -1,28 +1,27 @@
 import { cookies } from 'next/headers'
-import { getMonthlyVisits } from '@/lib/gymmaster'
+import { getAnnualVisits } from '@/lib/gymmaster'
 
-const MAX_MONTHS_BACK = 24
 const COMMITMENT_TARGET = 12
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-function calcMonthStreak(
-  visits: Array<{ year: number; month: number; visitCount: number }>
+/**
+ * Count consecutive months going back from current month that have >= 1 visit.
+ * Only uses data we actually have (current year from GymMaster).
+ */
+function calcStreak(
+  months: Array<{ month: number; visitCount: number }>,
+  currentMonth: number
 ): number {
-  if (visits.length === 0) return 0
-  const map = new Map(visits.map(v => [`${v.year}-${v.month}`, v.visitCount]))
-  const today = new Date()
   let streak = 0
-  let year = today.getFullYear()
-  let month = today.getMonth() + 1
-
-  for (let i = 0; i < MAX_MONTHS_BACK; i++) {
-    if ((map.get(`${year}-${month}`) ?? 0) >= 1) {
+  let m = currentMonth
+  while (m >= 1) {
+    const entry = months.find(x => x.month === m)
+    if ((entry?.visitCount ?? 0) >= 1) {
       streak++
+      m--
     } else {
       break
     }
-    month--
-    if (month === 0) { month = 12; year-- }
   }
   return streak
 }
@@ -33,25 +32,15 @@ export default async function AttendanceStreak() {
   const memberToken = cookieStore.get('gymmaster_token')?.value ?? ''
 
   const today = new Date()
-  const allMonths: Array<{ year: number; month: number; visitCount: number }> = []
+  const currentMonth = today.getMonth() + 1
 
-  let year = today.getFullYear()
-  let month = today.getMonth() + 1
-  let monthsFetched = 0
-  let streakBroken = false
+  // Single API call — returns all 12 months for the current year
+  const annualData = await getAnnualVisits(memberId, memberToken || undefined)
 
-  while (monthsFetched < MAX_MONTHS_BACK && !streakBroken) {
-    const data = await getMonthlyVisits(memberId, year, month, memberToken || undefined)
-    allMonths.push({ year, month, visitCount: data.visitCount })
-    monthsFetched++
-    if (data.visitCount === 0 && monthsFetched > 1) streakBroken = true
-    month--
-    if (month === 0) { month = 12; year-- }
-  }
+  const thisMonthData = annualData.find(m => m.month === currentMonth)
+  const visitCount = thisMonthData?.visitCount ?? 0
+  const streakMonths = calcStreak(annualData, currentMonth)
 
-  const streakMonths = calcMonthStreak(allMonths)
-  const thisMonth = allMonths[0]
-  const visitCount = thisMonth?.visitCount ?? 0
   const monthName = today.toLocaleString('en-GB', { month: 'long' })
   const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
   const daysLeft = daysInMonth - today.getDate()
@@ -59,8 +48,9 @@ export default async function AttendanceStreak() {
   const qualified = visitCount >= COMMITMENT_TARGET
   const pct = Math.min(Math.round((visitCount / COMMITMENT_TARGET) * 100), 100)
 
-  // Last 6 months for bar chart (oldest → newest)
-  const displayMonths = allMonths.slice(0, 6).reverse()
+  // Show up to 6 months ending at current month, oldest → newest
+  const startMonth = Math.max(1, currentMonth - 5)
+  const displayMonths = annualData.filter(m => m.month >= startMonth && m.month <= currentMonth)
   const maxVisits = Math.max(...displayMonths.map(m => m.visitCount), 1)
 
   return (
@@ -106,13 +96,13 @@ export default async function AttendanceStreak() {
           : `${remaining} more visit${remaining !== 1 ? 's' : ''} needed · ${daysLeft} day${daysLeft !== 1 ? 's' : ''} left in ${monthName}`}
       </p>
 
-      {/* 6-month bar chart */}
+      {/* Monthly bar chart — current year only */}
       <div className="flex items-end gap-1.5 h-14">
         {displayMonths.map((m) => {
-          const isCurrent = m.year === today.getFullYear() && m.month === (today.getMonth() + 1)
+          const isCurrent = m.month === currentMonth
           const heightPct = m.visitCount > 0 ? Math.max((m.visitCount / maxVisits) * 100, 12) : 0
           return (
-            <div key={`${m.year}-${m.month}`} className="flex-1 flex flex-col items-center gap-1">
+            <div key={m.month} className="flex-1 flex flex-col items-center gap-1">
               <div className="w-full flex items-end" style={{ height: '40px' }}>
                 <div
                   title={`${MONTH_NAMES[m.month - 1]}: ${m.visitCount} visit${m.visitCount !== 1 ? 's' : ''}`}

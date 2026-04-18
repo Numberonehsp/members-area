@@ -10,7 +10,6 @@ const navItems = [
   { href: "/education",        label: "Learn",           icon: BookIcon       },
   { href: "/results",          label: "Results",         icon: ChartIcon      },
   { href: "/goals",            label: "Goals",           icon: TargetIcon     },
-  { href: "/commitment-club",  label: "Commitment Club", icon: TrophyIcon     },
   { href: "/wellbeing",        label: "Wellbeing",       icon: HeartIcon      },
   { href: "/messages",         label: "Messages",        icon: MessageIcon    },
   { href: "/community",        label: "Community",       icon: UsersIcon      },
