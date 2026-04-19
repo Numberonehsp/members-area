@@ -74,7 +74,7 @@ export const SEED_PATHWAYS: Pathway[] = [
     is_published: true,
     created_at: '2026-01-01T00:00:00Z',
     module_count: 5,
-    total_duration_minutes: 50,
+    total_duration_minutes: 48,
     completed_count: 0,
   },
 ]
