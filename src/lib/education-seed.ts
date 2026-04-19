@@ -594,8 +594,8 @@ export const SEED_QUIZ: Record<string, QuizQuestion[]> = {
     },
     {
       id: 'us02-q4',
-      question: 'Protein powder can cause fat gain.',
-      options: ['True — it is high in calories so excess intake contributes to a calorie surplus', 'False — protein has no calories', 'False — protein is always used for muscle building', 'True — it raises insulin'],
+      question: 'Protein powder can cause fat gain if consumed in excess of your total daily calorie needs.',
+      options: ['True', 'False'],
       correct_index: 0,
     },
   ],
