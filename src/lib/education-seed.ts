@@ -18,7 +18,7 @@ export const SEED_PATHWAYS: Pathway[] = [
     is_published: true,
     created_at: '2026-01-01T00:00:00Z',
     module_count: 12,
-    total_duration_minutes: 110,
+    total_duration_minutes: 105,
     completed_count: 0,
   },
   {
@@ -177,7 +177,7 @@ export const SEED_MODULES: Record<string, Module[]> = {
       description: 'How to calculate your protein, carb, and fat targets in MyFitnessPal — and why you should set protein first before worrying about anything else.',
       module_order: 7,
       video_url: null,
-      pdf_url: null,
+      pdf_url: null,   // Summary sheet: macro targets reference card — populate when PDF uploaded
       duration_minutes: 10,
       is_published: true,
       created_at: '2026-01-01T00:00:00Z',
@@ -251,7 +251,7 @@ export const SEED_MODULES: Record<string, Module[]> = {
       description: "No pain, no gain. Women who lift will get bulky. Sweating means you're burning fat. You can out-train a bad diet. Four myths that hold people back.",
       module_order: 12,
       video_url: null,
-      pdf_url: null,
+      pdf_url: null,   // Summary sheet: myth vs. fact reference card — populate when PDF uploaded
       duration_minutes: 9,
       is_published: true,
       created_at: '2026-01-01T00:00:00Z',
