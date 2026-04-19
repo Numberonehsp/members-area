@@ -376,26 +376,283 @@ export const SEED_RESOURCES: Resource[] = [
 ]
 
 export const SEED_QUIZ: Record<string, QuizQuestion[]> = {
-  'nf-1': [
+  // ── Macros: Protein lesson ─────────────────────────────────────────────
+  'nf-03b': [
     {
-      id: 'q1',
-      question: 'What is a calorie?',
-      options: ['A unit of carbohydrate', 'A unit of energy', 'A type of macronutrient', 'A measure of fat'],
+      id: 'nf03b-q1',
+      question: 'What is the recommended daily protein intake for someone doing strength training?',
+      options: ['0.5–0.8g per kg of bodyweight', '1.6–2.2g per kg of bodyweight', '3.0–4.0g per kg of bodyweight', '0.1–0.3g per kg of bodyweight'],
       correct_index: 1,
     },
     {
-      id: 'q2',
-      question: 'Which of the following creates a calorie deficit?',
-      options: ['Eating more than you burn', 'Eating less than you burn', 'Eating only protein', 'Avoiding all fats'],
+      id: 'nf03b-q2',
+      question: 'Which of the following is NOT a primary function of protein?',
+      options: ['Muscle repair and growth', 'Keeping you feeling full', 'Providing your main source of energy during training', 'Supporting immune function'],
+      correct_index: 2,
+    },
+    {
+      id: 'nf03b-q3',
+      question: 'Protein contains 4 calories per gram.',
+      options: ['True', 'False'],
+      correct_index: 0,
+    },
+    {
+      id: 'nf03b-q4',
+      question: 'Most beginners already eat enough protein through their normal diet.',
+      options: ['True', 'False'],
       correct_index: 1,
     },
   ],
-  'nf-2': [
+
+  // ── Macros: Carbohydrates lesson ───────────────────────────────────────
+  'nf-03c': [
     {
-      id: 'q1',
-      question: 'Approximately how much protein per kg of bodyweight is recommended for strength athletes?',
-      options: ['0.5–0.8g', '1.6–2.2g', '3.0–4.0g', '0.1–0.3g'],
+      id: 'nf03c-q1',
+      question: 'What is glycogen?',
+      options: ['A type of dietary fat', 'Stored carbohydrate used as fuel during exercise', 'A hormone that controls blood sugar', 'A type of protein found in muscles'],
       correct_index: 1,
+    },
+    {
+      id: 'nf03c-q2',
+      question: 'Cutting out carbohydrates completely is the best approach for fat loss.',
+      options: ['True', 'False'],
+      correct_index: 1,
+    },
+    {
+      id: 'nf03c-q3',
+      question: 'How many calories per gram do carbohydrates contain?',
+      options: ['2', '4', '7', '9'],
+      correct_index: 1,
+    },
+    {
+      id: 'nf03c-q4',
+      question: 'Which factor matters most when choosing carbohydrate sources?',
+      options: ['Eating only low-carb vegetables', 'Avoiding all white foods', 'Food quality and fibre content', 'Eating carbs only at breakfast'],
+      correct_index: 2,
+    },
+  ],
+
+  // ── Macros: Fats lesson ────────────────────────────────────────────────
+  'nf-03d': [
+    {
+      id: 'nf03d-q1',
+      question: 'How many calories per gram does dietary fat contain?',
+      options: ['4', '6', '7', '9'],
+      correct_index: 3,
+    },
+    {
+      id: 'nf03d-q2',
+      question: 'Dietary fat is essential for absorbing vitamins A, D, E and K.',
+      options: ['True', 'False'],
+      correct_index: 0,
+    },
+    {
+      id: 'nf03d-q3',
+      question: 'Which of the following is a function of dietary fat?',
+      options: ['Fuelling high-intensity exercise', 'Producing hormones including testosterone', 'Preventing muscle breakdown during fasting', 'All of the above'],
+      correct_index: 1,
+    },
+    {
+      id: 'nf03d-q4',
+      question: 'Eating dietary fat directly causes body fat gain.',
+      options: ['True', 'False'],
+      correct_index: 1,
+    },
+  ],
+
+  // ── Myths: Carb and fat myths ──────────────────────────────────────────
+  'nf-05a': [
+    {
+      id: 'nf05a-q1',
+      question: 'What actually causes fat gain?',
+      options: ['Eating carbohydrates', 'Eating dietary fat', 'A sustained calorie surplus over time', 'Eating after 6pm'],
+      correct_index: 2,
+    },
+    {
+      id: 'nf05a-q2',
+      question: 'Low-fat food products are always a better choice for weight loss.',
+      options: ['True', 'False'],
+      correct_index: 1,
+    },
+    {
+      id: 'nf05a-q3',
+      question: 'Why are low-fat products often NOT better for weight loss?',
+      options: ['They contain more protein', 'They often replace fat with added sugar to maintain taste', 'They are harder to digest', 'They raise cholesterol'],
+      correct_index: 1,
+    },
+    {
+      id: 'nf05a-q4',
+      question: 'Dietary fat and body fat are the same thing.',
+      options: ['True', 'False'],
+      correct_index: 1,
+    },
+  ],
+
+  // ── Myths: Weight loss myths ───────────────────────────────────────────
+  'nf-05b': [
+    {
+      id: 'nf05b-q1',
+      question: 'Can you "spot reduce" fat by training a specific body part?',
+      options: ['Yes, with the right exercises', 'No — fat loss is determined by overall calorie deficit, not exercise location', 'Only with high repetitions', 'Only if combined with a fat burner'],
+      correct_index: 1,
+    },
+    {
+      id: 'nf05b-q2',
+      question: 'Eating calories late at night causes more fat gain than eating the same calories earlier in the day.',
+      options: ['True', 'False'],
+      correct_index: 1,
+    },
+    {
+      id: 'nf05b-q3',
+      question: 'Fasted cardio burns significantly more total fat over 24 hours than fed cardio.',
+      options: ['True', 'False'],
+      correct_index: 1,
+    },
+    {
+      id: 'nf05b-q4',
+      question: 'What does a juice cleanse primarily cause you to lose?',
+      options: ['Body fat', 'Muscle tissue', 'Water and potentially muscle', 'Visceral fat'],
+      correct_index: 2,
+    },
+  ],
+
+  // ── Myths: Protein and supplement myths ───────────────────────────────
+  'nf-05c': [
+    {
+      id: 'nf05c-q1',
+      question: 'High protein diets damage the kidneys in healthy adults.',
+      options: ['True', 'False'],
+      correct_index: 1,
+    },
+    {
+      id: 'nf05c-q2',
+      question: 'You MUST consume protein within 30 minutes of finishing a workout.',
+      options: ['True', 'False'],
+      correct_index: 1,
+    },
+    {
+      id: 'nf05c-q3',
+      question: 'What is the most important factor for muscle recovery after training?',
+      options: ['Consuming a protein shake within 30 minutes', 'Total daily protein intake throughout the day', 'Taking a creatine supplement', 'Eating a large meal immediately after'],
+      correct_index: 1,
+    },
+    {
+      id: 'nf05c-q4',
+      question: 'Fat burner supplements can cause significant fat loss without changes to diet or exercise.',
+      options: ['True', 'False'],
+      correct_index: 1,
+    },
+  ],
+
+  // ── Myths: Training myths ─────────────────────────────────────────────
+  'nf-05d': [
+    {
+      id: 'nf05d-q1',
+      question: '"No pain, no gain" — muscle soreness after every session is a sign of an effective workout.',
+      options: ['True', 'False'],
+      correct_index: 1,
+    },
+    {
+      id: 'nf05d-q2',
+      question: 'Women who lift weights will get bulky muscles.',
+      options: ['True', 'False'],
+      correct_index: 1,
+    },
+    {
+      id: 'nf05d-q3',
+      question: 'Why is it very difficult for most women to build large muscles from strength training?',
+      options: ['Women\'s muscles are structurally different', 'Women have significantly lower testosterone levels than men', 'Women cannot perform compound lifts effectively', 'Women\'s metabolism is faster'],
+      correct_index: 1,
+    },
+    {
+      id: 'nf05d-q4',
+      question: 'Sweating more during a workout means you are burning more calories.',
+      options: ['True', 'False'],
+      correct_index: 1,
+    },
+  ],
+
+  // ── Supplements: Protein powder lesson ───────────────────────────────
+  'us-02': [
+    {
+      id: 'us02-q1',
+      question: 'Protein powder is necessary for building muscle.',
+      options: ['True', 'False'],
+      correct_index: 1,
+    },
+    {
+      id: 'us02-q2',
+      question: 'What is the main difference between whey and casein protein?',
+      options: ['Whey has more calories', 'Whey is fast-digesting; casein is slow-digesting', 'Casein causes more muscle growth', 'Whey is only for men'],
+      correct_index: 1,
+    },
+    {
+      id: 'us02-q3',
+      question: 'When is a protein supplement MOST useful?',
+      options: ['When you cannot meet your daily protein target through whole food alone', 'Immediately after every workout regardless of diet', 'First thing every morning', 'When training more than 5 days a week'],
+      correct_index: 0,
+    },
+    {
+      id: 'us02-q4',
+      question: 'Protein powder can cause fat gain.',
+      options: ['True — it is high in calories so excess intake contributes to a calorie surplus', 'False — protein has no calories', 'False — protein is always used for muscle building', 'True — it raises insulin'],
+      correct_index: 0,
+    },
+  ],
+
+  // ── Supplements: Creatine lesson ─────────────────────────────────────
+  'us-03': [
+    {
+      id: 'us03-q1',
+      question: 'What does creatine do in the body?',
+      options: ['Directly builds muscle tissue', 'Helps muscles regenerate ATP (energy) faster during high-intensity effort', 'Burns fat during exercise', 'Increases testosterone production'],
+      correct_index: 1,
+    },
+    {
+      id: 'us03-q2',
+      question: 'You need to "load" creatine with a high dose for the first week to see results.',
+      options: ['True', 'False'],
+      correct_index: 1,
+    },
+    {
+      id: 'us03-q3',
+      question: 'What is the recommended daily maintenance dose of creatine?',
+      options: ['10–15g', '3–5g', '1g', '20g'],
+      correct_index: 1,
+    },
+    {
+      id: 'us03-q4',
+      question: 'Creatine supplementation causes kidney damage in healthy adults.',
+      options: ['True', 'False'],
+      correct_index: 1,
+    },
+  ],
+
+  // ── Supplements: Pre-workout and fat burners ──────────────────────────
+  'us-04': [
+    {
+      id: 'us04-q1',
+      question: 'What is the primary active ingredient in most pre-workout supplements?',
+      options: ['Creatine', 'Beta-alanine', 'Caffeine', 'BCAAs'],
+      correct_index: 2,
+    },
+    {
+      id: 'us04-q2',
+      question: 'Fat burner supplements work independently of diet and exercise changes.',
+      options: ['True', 'False'],
+      correct_index: 1,
+    },
+    {
+      id: 'us04-q3',
+      question: 'Which group of people should be MOST cautious about stimulant-based supplements?',
+      options: ['People who train in the morning', 'People with heart conditions, anxiety, or high blood pressure', 'People who are new to the gym', 'People who are vegetarian'],
+      correct_index: 1,
+    },
+    {
+      id: 'us04-q4',
+      question: 'Regular use of caffeine-containing pre-workout supplements can lead to caffeine dependency.',
+      options: ['True', 'False'],
+      correct_index: 0,
     },
   ],
 }
