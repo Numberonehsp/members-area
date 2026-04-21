@@ -6,7 +6,6 @@ export async function POST(request: NextRequest) {
   // Get member identity from cookies set at login
   const cookieStore = await cookies()
   const gymMasterId = cookieStore.get('gymmaster_member_id')?.value
-  const firstName = cookieStore.get('gymmaster_first_name')?.value
 
   if (!gymMasterId) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
@@ -24,7 +23,6 @@ export async function POST(request: NextRequest) {
     .insert({
       challenge_id: challengeId,
       gymmaster_member_id: gymMasterId,
-      member_name: firstName ?? null,
     })
 
   if (error) {
@@ -33,11 +31,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Already signed up' }, { status: 409 })
     }
     console.error('[Signup] insert failed:', error)
-    // Return error code to help diagnose env/permission issues without log access
-    return NextResponse.json(
-      { error: 'Failed to sign up', code: error.code, detail: error.message },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to sign up' }, { status: 500 })
   }
 
   return NextResponse.json({ success: true })
