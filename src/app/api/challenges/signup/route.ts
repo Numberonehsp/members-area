@@ -33,7 +33,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Already signed up' }, { status: 409 })
     }
     console.error('[Signup] insert failed:', error)
-    return NextResponse.json({ error: 'Failed to sign up' }, { status: 500 })
+    // Return error code to help diagnose env/permission issues without log access
+    return NextResponse.json(
+      { error: 'Failed to sign up', code: error.code, detail: error.message },
+      { status: 500 }
+    )
   }
 
   return NextResponse.json({ success: true })

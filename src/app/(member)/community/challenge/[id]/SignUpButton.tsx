@@ -46,7 +46,8 @@ export default function SignUpButton({ challengeId, alreadySignedUp, deadlinePas
         router.refresh()
       } else {
         const data = await res.json()
-        setError(data.error ?? 'Something went wrong')
+        const detail = data.code ? ` (${data.code}: ${data.detail})` : ''
+        setError((data.error ?? 'Something went wrong') + detail)
       }
     } catch {
       setError('Network error — please try again')
