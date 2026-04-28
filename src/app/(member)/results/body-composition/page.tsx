@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { fetchMemberScans } from "@/lib/staffhub";
 import type { InBodyScan } from "@/lib/staffhub";
 import BodyCompositionChart from "@/components/results/BodyCompositionChart";
+import AddScanForm from "@/components/results/AddScanForm";
 
 type DeltaDisplayProps = {
   value: number;
@@ -60,6 +61,7 @@ function NoScans() {
 export default async function BodyCompositionPage() {
   const cookieStore = await cookies();
   const gymMasterId = cookieStore.get("gymmaster_member_id")?.value ?? "";
+  const isLoggedIn = !!gymMasterId;
 
   const scans: InBodyScan[] = gymMasterId
     ? await fetchMemberScans(gymMasterId)
@@ -68,7 +70,16 @@ export default async function BodyCompositionPage() {
   // fetchMemberScans returns newest first; we want oldest first for charts/deltas
   const chronological = [...scans].reverse();
 
-  if (chronological.length === 0) return <NoScans />;
+  if (chronological.length === 0) return (
+    <>
+      <NoScans />
+      {isLoggedIn && (
+        <div className="mt-4">
+          <AddScanForm />
+        </div>
+      )}
+    </>
+  );
 
   const latest = chronological[chronological.length - 1];
   const first = chronological[0];
@@ -170,6 +181,9 @@ export default async function BodyCompositionPage() {
           </p>
         </div>
       )}
+
+      {/* Member self-entry form */}
+      {isLoggedIn && <AddScanForm />}
 
       {/* Interactive line chart — last 5 scans, pick 1 or 2 metrics */}
       {chronological.length > 0 && <BodyCompositionChart scans={scans} />}
