@@ -58,10 +58,25 @@ export default function WellbeingPage({ checkins }: Props) {
   const [form, setForm] = useState({ energy: 0, sleep: 0, stress: 0, comments: '' })
   const [submitted, setSubmitted] = useState(hasThisWeek)
   const [showForm, setShowForm] = useState(!hasThisWeek)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!form.energy || !form.sleep || !form.stress) return
-    // TODO: POST to Supabase wellbeing_checkins
+    setSaving(true)
+    setSaveError(null)
+
+    const res = await fetch('/api/wellbeing', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ week_start: thisWeek, ...form }),
+    })
+
+    setSaving(false)
+    if (!res.ok) {
+      setSaveError('Something went wrong — please try again.')
+      return
+    }
     setSubmitted(true)
     setShowForm(false)
   }
@@ -134,12 +149,15 @@ export default function WellbeingPage({ checkins }: Props) {
               </div>
             </div>
 
+            {saveError && (
+              <p className="mt-3 text-xs text-status-red text-center">{saveError}</p>
+            )}
             <button
-              disabled={!form.energy || !form.sleep || !form.stress}
+              disabled={!form.energy || !form.sleep || !form.stress || saving}
               onClick={handleSubmit}
               className="mt-5 w-full py-3 rounded-xl bg-brand text-white font-semibold text-sm hover:bg-brand-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              Submit check-in
+              {saving ? 'Saving…' : 'Submit check-in'}
             </button>
           </div>
         </div>

@@ -40,22 +40,36 @@ export default function MessageThread({ messages: initialMessages, viewerRole, m
     if (!body.trim()) return
     setSending(true)
 
+    const text = body.trim()
+
     // Optimistic update
     const optimistic: Message = {
       id: `temp-${Date.now()}`,
       sender_role: viewerRole,
       sender_name: viewerRole === 'coach' ? 'Coach' : 'You',
-      body: body.trim(),
+      body: text,
       is_read: false,
       created_at: new Date().toISOString(),
     }
     setMessages(m => [...m, optimistic])
     setBody('')
 
-    // TODO: POST to /api/messages with { body, sender_role }
-    // On success replace optimistic message with real one
-    // On failure remove optimistic and restore body
-    await new Promise(r => setTimeout(r, 300)) // simulate latency
+    const res = await fetch('/api/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ body: text, sender_role: viewerRole }),
+    })
+
+    if (res.ok) {
+      const { message } = await res.json()
+      // Replace optimistic message with the saved one (has real id and created_at)
+      setMessages(m => m.map(msg => msg.id === optimistic.id ? message : msg))
+    } else {
+      // Roll back on failure
+      setMessages(m => m.filter(msg => msg.id !== optimistic.id))
+      setBody(text)
+    }
+
     setSending(false)
   }
 

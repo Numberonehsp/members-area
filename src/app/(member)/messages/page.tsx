@@ -1,41 +1,43 @@
+import { cookies } from 'next/headers'
+import { createClient } from '@supabase/supabase-js'
 import MessageThread from '@/components/messages/MessageThread'
 import type { Message } from '@/components/messages/MessageThread'
 
-// TODO: replace with Supabase query for logged-in member's thread
-// const { data: messages } = await supabase
-//   .from('messages')
-//   .select('*')
-//   .eq('thread_id', memberThread.id)
-//   .order('created_at', { ascending: true })
+async function getMessages(memberId: string): Promise<Message[]> {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  )
 
-const SEED_MESSAGES: Message[] = [
-  {
-    id: 'm1',
-    sender_role: 'coach',
-    sender_name: 'Coach Dan',
-    body: "Hey! Great session last Tuesday — your hip hinge is really coming together. How are you feeling after it?",
-    is_read: true,
-    created_at: '2026-04-06T10:15:00Z',
-  },
-  {
-    id: 'm2',
-    sender_role: 'member',
-    sender_name: 'You',
-    body: "Thanks! Yeah I felt that one the next day 😄 Glutes were properly sore. Really enjoying the programme.",
-    is_read: true,
-    created_at: '2026-04-06T11:42:00Z',
-  },
-  {
-    id: 'm3',
-    sender_role: 'coach',
-    sender_name: 'Coach Dan',
-    body: "That's the sign of a good session! We'll push the hinge a bit more this week. Also — make sure you're hitting your protein targets, it'll make a big difference to recovery.",
-    is_read: true,
-    created_at: '2026-04-07T09:00:00Z',
-  },
-]
+  // Find thread for this member
+  const { data: thread } = await supabase
+    .from('message_threads')
+    .select('id')
+    .eq('gymmaster_member_id', memberId)
+    .single()
 
-export default function MemberMessagesPage() {
+  if (!thread) return []
+
+  const { data, error } = await supabase
+    .from('messages')
+    .select('id, sender_role, sender_name, body, is_read, created_at')
+    .eq('thread_id', thread.id)
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    console.error('[messages page] fetch error:', error.message)
+    return []
+  }
+
+  return data ?? []
+}
+
+export default async function MemberMessagesPage() {
+  const cookieStore = await cookies()
+  const memberId = cookieStore.get('gymmaster_member_id')?.value ?? ''
+
+  const messages = memberId ? await getMessages(memberId) : []
+
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)] max-w-2xl">
       {/* Header */}
@@ -50,7 +52,7 @@ export default function MemberMessagesPage() {
       {/* Thread */}
       <div className="flex-1 bg-bg-card border border-border-light rounded-2xl overflow-hidden min-h-0">
         <MessageThread
-          messages={SEED_MESSAGES}
+          messages={messages}
           viewerRole="member"
         />
       </div>
