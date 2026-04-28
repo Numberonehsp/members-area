@@ -284,6 +284,92 @@ export async function getAnnualVisits(
   }))
 }
 
+// ── Full member record (coach portal) ─────────────────────────────────────────
+
+export type GymMasterMember = {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  phone: string
+  dob: string | null          // 'YYYY-MM-DD' or null
+  joinDate: string | null     // 'YYYY-MM-DD' or null
+  lastVisitDate: string | null // 'YYYY-MM-DD' or null
+  membershipType: string
+}
+
+/**
+ * Fetch all active members with full details. Uses the Staff API key.
+ * Call this from Server Components only — never expose in client bundles.
+ */
+export async function getAllMembers(): Promise<GymMasterMember[]> {
+  if (!SITE_NAME || !STAFF_API_KEY) {
+    return [
+      { id: '1001', firstName: 'Alex', lastName: 'Johnson', email: 'alex@example.com', phone: '', dob: '1990-06-15', joinDate: '2024-01-10', lastVisitDate: new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0], membershipType: 'Full Membership' },
+      { id: '1002', firstName: 'Sam', lastName: 'Davies', email: 'sam@example.com', phone: '', dob: '1985-03-22', joinDate: '2023-09-01', lastVisitDate: new Date(Date.now() - 5 * 86400000).toISOString().split('T')[0], membershipType: 'Full Membership' },
+      { id: '1003', firstName: 'Jordan', lastName: 'Williams', email: 'jordan@example.com', phone: '', dob: '1995-11-08', joinDate: '2025-02-15', lastVisitDate: new Date(Date.now() - 12 * 86400000).toISOString().split('T')[0], membershipType: 'Off-Peak' },
+      { id: '1004', firstName: 'Casey', lastName: 'Roberts', email: 'casey@example.com', phone: '', dob: '1978-09-30', joinDate: '2022-06-01', lastVisitDate: new Date(Date.now() - 25 * 86400000).toISOString().split('T')[0], membershipType: 'Full Membership' },
+      { id: '1005', firstName: 'Morgan', lastName: 'Evans', email: 'morgan@example.com', phone: '', dob: '1992-01-14', joinDate: '2024-03-20', lastVisitDate: new Date(Date.now() - 1 * 86400000).toISOString().split('T')[0], membershipType: 'Full Membership' },
+    ]
+  }
+
+  const res = await fetch(
+    `https://${SITE_NAME}.gymmasteronline.com/portal/api/v1/members`,
+    {
+      headers: { 'Portal-API-Key': STAFF_API_KEY, Accept: 'application/json' },
+      next: { revalidate: 300 }, // refresh every 5 min
+    }
+  )
+
+  if (!res.ok) {
+    console.error(`[GymMaster] getAllMembers: ${res.status}`)
+    return []
+  }
+
+  let data: { result?: unknown; members?: unknown; data?: unknown } | unknown[]
+  try {
+    data = await res.json()
+  } catch {
+    console.error('[GymMaster] getAllMembers: JSON parse failed')
+    return []
+  }
+
+  const raw = (Array.isArray(data)
+    ? data
+    : ((data as Record<string, unknown>).result ??
+       (data as Record<string, unknown>).members ??
+       (data as Record<string, unknown>).data ??
+       [])) as Array<Record<string, unknown>>
+
+  return raw
+    .filter((m) => m.status === 'Current' && !m.isprospect)
+    .map((m): GymMasterMember => ({
+      id: String(m.memberid ?? m.id ?? ''),
+      firstName: String(m.firstname ?? ''),
+      lastName: String(m.surname ?? ''),
+      email: String(m.email ?? ''),
+      phone: String(m.mobile ?? m.phone ?? ''),
+      dob: parseGMDate(m.dateofbirth ?? m.dob ?? null),
+      joinDate: parseGMDate(m.joindate ?? m.join_date ?? null),
+      lastVisitDate: parseGMDate(m.lastattendedon ?? m.lastvisit ?? m.last_visit ?? null),
+      membershipType: String(m.membershipname ?? m.membership_name ?? m.membership ?? ''),
+    }))
+    .filter((m) => m.id)
+    .sort((a, b) => a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName))
+}
+
+/** Normalise GymMaster date fields to 'YYYY-MM-DD' or null. */
+function parseGMDate(val: unknown): string | null {
+  if (!val || val === '0000-00-00') return null
+  const s = String(val)
+  // Already ISO: '2026-04-10'
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10)
+  // Try parsing other formats
+  const d = new Date(s)
+  if (!isNaN(d.getTime())) return d.toISOString().split('T')[0]
+  return null
+}
+
 /**
  * Fetch visit counts for ALL active members for the current month.
  * Uses the Staff API key — coach portal only.

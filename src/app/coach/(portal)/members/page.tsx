@@ -1,11 +1,7 @@
-import PlaceholderPage from "@/components/PlaceholderPage";
+import { getAllMembers } from '@/lib/gymmaster'
+import CoachMembersClient from './CoachMembersClient'
 
-export default function CoachMembersPage() {
-  return (
-    <PlaceholderPage
-      eyebrow="Coach"
-      title="All Members"
-      description="Searchable, filterable list of members. Sort by engagement, last visit, education progress."
-    />
-  );
+export default async function CoachMembersPage() {
+  const members = await getAllMembers()
+  return <CoachMembersClient members={members} />
 }

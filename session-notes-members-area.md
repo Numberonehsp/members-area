@@ -1,6 +1,6 @@
 # Members Area — Session Notes
 
-> Concise reference for picking up a new session. Last updated: 2026-04-18.
+> Concise reference for picking up a new session. Last updated: 2026-04-28.
 
 ---
 
@@ -105,9 +105,9 @@ STAFFHUB_SUPABASE_SERVICE_ROLE_KEY   ← needed for any write operations
 | Commitment Club | Removed from nav | — |
 | Community Hub | Staff Hub challenges + awards + events | ✅ Live |
 | Results | Seed data | ⚠️ Seed |
-| Wellbeing | Seed data | ⚠️ Seed |
+| Wellbeing | Members Area Supabase `wellbeing_checkins` | ✅ Live |
 | Education | Seed data (nutrition modules added) | ⚠️ Seed |
-| Messages | Placeholder | ❌ Not built |
+| Messages | Members Area Supabase `messages` + `message_threads` | ✅ Live |
 | Partners | Placeholder | ❌ Not built |
 
 ---
@@ -119,8 +119,7 @@ STAFFHUB_SUPABASE_SERVICE_ROLE_KEY   ← needed for any write operations
 3. **Add `member_name` to challenge_signups** — run the ALTER TABLE above, then restore the field in the signup route.
 4. **Commitment Club page (live data)** — `/commitment-club` route still exists with hardcoded leaderboard. Either remove or wire up `getAllMemberVisitsThisMonth()`.
 5. **Results page** — wire to real InBody scan data.
-6. **Messages** — not built at all.
-7. **Mobile review** — app is responsive but hasn't had a dedicated mobile pass.
+6. **Mobile review** — app is responsive but hasn't had a dedicated mobile pass.
 
 ---
 
