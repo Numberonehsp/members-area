@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import type { GymMasterMember } from '@/lib/gymmaster'
+import type { MemberRow } from '../page'
 
 type EngagementStatus = 'engaged' | 'at_risk' | 'disengaged' | 'unknown'
 
@@ -34,9 +34,9 @@ function formatDate(iso: string | null): string {
   return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-type SortKey = 'name' | 'lastVisit' | 'joinDate' | 'membershipType' | 'status'
+type SortKey = 'name' | 'lastVisit' | 'visitsMonth' | 'joinDate' | 'membershipType' | 'status'
 
-type Props = { members: GymMasterMember[] }
+type Props = { members: MemberRow[] }
 
 export default function CoachMembersClient({ members }: Props) {
   const [search, setSearch] = useState('')
@@ -69,6 +69,7 @@ export default function CoachMembersClient({ members }: Props) {
       if (sortKey === 'lastVisit') {
         return mul * (b.lastVisitDate ?? '').localeCompare(a.lastVisitDate ?? '')
       }
+      if (sortKey === 'visitsMonth') return mul * ((a.visitsThisMonth ?? -1) - (b.visitsThisMonth ?? -1))
       if (sortKey === 'joinDate') return mul * (b.joinDate ?? '').localeCompare(a.joinDate ?? '')
       if (sortKey === 'membershipType') return mul * a.membershipType.localeCompare(b.membershipType)
       return 0
@@ -135,6 +136,7 @@ export default function CoachMembersClient({ members }: Props) {
                   { key: 'membershipType' as SortKey, label: 'Membership' },
                   { key: 'joinDate' as SortKey, label: 'Joined' },
                   { key: 'lastVisit' as SortKey, label: 'Last Visit' },
+                  { key: 'visitsMonth' as SortKey, label: 'Visits' },
                   { key: 'status' as SortKey, label: 'Status' },
                 ]).map((col) => (
                   <th
@@ -150,7 +152,7 @@ export default function CoachMembersClient({ members }: Props) {
             <tbody className="divide-y divide-border-light">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-sm text-text-secondary">
+                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-text-secondary">
                     No members match your search.
                   </td>
                 </tr>
@@ -177,6 +179,9 @@ export default function CoachMembersClient({ members }: Props) {
                       {m.lastVisitDate && (
                         <span className="text-text-secondary/50 ml-1">({formatDate(m.lastVisitDate)})</span>
                       )}
+                    </td>
+                    <td className="px-4 py-3 font-data text-xs font-semibold text-text-primary">
+                      {m.visitsThisMonth !== null ? m.visitsThisMonth : <span className="font-normal text-text-secondary">—</span>}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${cfg.bg} ${cfg.text}`}>

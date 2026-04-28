@@ -348,7 +348,7 @@ export async function getAllMembers(): Promise<GymMasterMember[]> {
       firstName: String(m.firstname ?? ''),
       lastName: String(m.surname ?? ''),
       email: String(m.email ?? ''),
-      phone: String(m.mobile ?? m.phone ?? ''),
+      phone: String(m.phonecell ?? m.mobile ?? m.phone ?? ''),
       dob: parseGMDate(m.dateofbirth ?? m.dob ?? null),
       joinDate: parseGMDate(m.joindate ?? m.join_date ?? null),
       lastVisitDate: parseGMDate(m.lastattendedon ?? m.lastvisit ?? m.last_visit ?? null),

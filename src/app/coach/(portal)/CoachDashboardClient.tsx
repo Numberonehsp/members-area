@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import type { GymMasterMember } from '@/lib/gymmaster'
+import type { MemberRow } from './page'
 
 type EngagementStatus = 'engaged' | 'at_risk' | 'disengaged' | 'unknown'
 
@@ -34,16 +34,17 @@ function formatDate(iso: string | null): string {
   return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-type SortKey = 'name' | 'lastVisit' | 'membershipType' | 'joinDate' | 'status'
+type SortKey = 'name' | 'lastVisit' | 'visitsMonth' | 'membershipType' | 'joinDate' | 'status'
 
 type BirthdayRow = { id: string; name: string; daysUntil: number; age: number }
 
 type Props = {
-  members: GymMasterMember[]
+  members: MemberRow[]
   upcomingBirthdays: BirthdayRow[]
+  cachedMemberCount: number
 }
 
-export default function CoachDashboardClient({ members, upcomingBirthdays }: Props) {
+export default function CoachDashboardClient({ members, upcomingBirthdays, cachedMemberCount }: Props) {
   const [search, setSearch] = useState('')
   const [sortKey, setSortKey] = useState<SortKey>('status')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
@@ -80,6 +81,9 @@ export default function CoachDashboardClient({ members, upcomingBirthdays }: Pro
         const aDate = a.joinDate ?? '0000-00-00'
         const bDate = b.joinDate ?? '0000-00-00'
         return mul * bDate.localeCompare(aDate)
+      }
+      if (sortKey === 'visitsMonth') {
+        return mul * ((a.visitsThisMonth ?? -1) - (b.visitsThisMonth ?? -1))
       }
       if (sortKey === 'membershipType') {
         return mul * (a.membershipType).localeCompare(b.membershipType)
@@ -156,7 +160,7 @@ export default function CoachDashboardClient({ members, upcomingBirthdays }: Pro
                   {([
                     { key: 'name' as SortKey, label: 'Member' },
                     { key: 'lastVisit' as SortKey, label: 'Last Visit' },
-                    { key: 'membershipType' as SortKey, label: 'Membership' },
+                    { key: 'visitsMonth' as SortKey, label: 'Visits' },
                     { key: 'status' as SortKey, label: 'Status' },
                   ]).map((col) => (
                     <th
@@ -188,8 +192,8 @@ export default function CoachDashboardClient({ members, upcomingBirthdays }: Pro
                       <td className="px-4 py-3 font-data text-text-secondary text-xs whitespace-nowrap">
                         {daysAgoLabel(m.lastVisitDate)}
                       </td>
-                      <td className="px-4 py-3 text-xs text-text-secondary whitespace-nowrap">
-                        {m.membershipType || '—'}
+                      <td className="px-4 py-3 font-data text-xs text-text-primary font-semibold">
+                        {m.visitsThisMonth !== null ? m.visitsThisMonth : <span className="text-text-secondary font-normal">—</span>}
                       </td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${cfg.bg} ${cfg.text}`}>
@@ -205,7 +209,12 @@ export default function CoachDashboardClient({ members, upcomingBirthdays }: Pro
           </div>
 
           <div className="px-5 py-3 border-t border-border-light flex items-center justify-between">
-            <span className="text-xs text-text-secondary">{filtered.length} of {members.length} members</span>
+            <span className="text-xs text-text-secondary">
+              {filtered.length} of {members.length} members
+              {cachedMemberCount > 0 && (
+                <span className="ml-2 text-text-secondary/60">· visit data for {cachedMemberCount} who&apos;ve logged in</span>
+              )}
+            </span>
             <Link href="/coach/members" className="text-xs text-brand hover:text-brand-dark transition-colors font-medium">
               View all →
             </Link>
