@@ -185,8 +185,11 @@ export async function fetchAwards(limit = 6): Promise<StaffHubAward[]> {
 export async function isMemberSignedUp(challengeId: string, gymMasterId: string): Promise<boolean> {
   if (!STAFFHUB_URL || !STAFFHUB_ANON_KEY) return false
   try {
+    // Check challenge_participants — the table staff see — not just challenge_signups.
+    // This means a member who signed up before migrations ran (stuck in signups-only state)
+    // will see the Sign Up button again and can recover.
     const { data, error } = await staffHubReader
-      .from('challenge_signups')
+      .from('challenge_participants')
       .select('id')
       .eq('challenge_id', challengeId)
       .eq('gymmaster_member_id', gymMasterId)
@@ -199,6 +202,99 @@ export async function isMemberSignedUp(challengeId: string, gymMasterId: string)
   } catch (err) {
     console.warn('[StaffHub] isMemberSignedUp threw:', err)
     return false
+  }
+}
+
+export type InBodyScan = {
+  id: string
+  gymmaster_member_id: string
+  scan_date: string      // 'YYYY-MM-DD'
+  weight: number | null
+  smm: number | null
+  bf_pct: number | null
+  bf_mass: number | null
+  member_name: string | null
+  notes: string | null
+  created_at: string
+}
+
+/**
+ * Fetch InBody scan history for a single member, newest first.
+ * Used by the member body-composition page.
+ */
+export async function fetchMemberScans(gymMasterId: string): Promise<InBodyScan[]> {
+  if (!STAFFHUB_URL || !STAFFHUB_ANON_KEY) return []
+  try {
+    const { data, error } = await staffHubReader
+      .from('inbody_scans')
+      .select('id, gymmaster_member_id, scan_date, weight, smm, bf_pct, bf_mass, member_name, notes, created_at')
+      .eq('gymmaster_member_id', gymMasterId)
+      .order('scan_date', { ascending: false })
+    if (error) {
+      console.warn('[StaffHub] fetchMemberScans failed:', error.message)
+      return []
+    }
+    return data ?? []
+  } catch (err) {
+    console.warn('[StaffHub] fetchMemberScans threw:', err)
+    return []
+  }
+}
+
+/**
+ * Fetch the most recent InBody scans across all members.
+ * Used by the coach InBody input page to show recent activity.
+ */
+export async function fetchRecentScans(limit = 20): Promise<InBodyScan[]> {
+  if (!STAFFHUB_URL || !STAFFHUB_ANON_KEY) return []
+  try {
+    const { data, error } = await staffHubReader
+      .from('inbody_scans')
+      .select('id, gymmaster_member_id, scan_date, weight, smm, bf_pct, bf_mass, member_name, notes, created_at')
+      .order('scan_date', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(limit)
+    if (error) {
+      console.warn('[StaffHub] fetchRecentScans failed:', error.message)
+      return []
+    }
+    return data ?? []
+  } catch (err) {
+    console.warn('[StaffHub] fetchRecentScans threw:', err)
+    return []
+  }
+}
+
+export type StrengthResult = {
+  id: string
+  gymmaster_member_id: string
+  exercise: string
+  result_value: number
+  result_notes: string | null
+  tested_date: string   // 'YYYY-MM-DD'
+  created_at: string
+}
+
+/**
+ * Fetch all strength results for a single member, newest first.
+ * Used by the strength & conditioning results page.
+ */
+export async function fetchMemberStrengthResults(gymMasterId: string): Promise<StrengthResult[]> {
+  if (!STAFFHUB_URL || !STAFFHUB_ANON_KEY) return []
+  try {
+    const { data, error } = await staffHubReader
+      .from('strength_results')
+      .select('id, gymmaster_member_id, exercise, result_value, result_notes, tested_date, created_at')
+      .eq('gymmaster_member_id', gymMasterId)
+      .order('tested_date', { ascending: false })
+    if (error) {
+      console.warn('[StaffHub] fetchMemberStrengthResults failed:', error.message)
+      return []
+    }
+    return data ?? []
+  } catch (err) {
+    console.warn('[StaffHub] fetchMemberStrengthResults threw:', err)
+    return []
   }
 }
 
