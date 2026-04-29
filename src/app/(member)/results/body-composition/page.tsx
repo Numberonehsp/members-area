@@ -2,6 +2,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { fetchMemberScans } from "@/lib/staffhub";
 import type { InBodyScan } from "@/lib/staffhub";
+import { getMemberMeasurements } from "@/lib/gymmaster";
 import BodyCompositionChart from "@/components/results/BodyCompositionChart";
 import AddScanForm from "@/components/results/AddScanForm";
 
@@ -61,11 +62,14 @@ function NoScans() {
 export default async function BodyCompositionPage() {
   const cookieStore = await cookies();
   const gymMasterId = cookieStore.get("gymmaster_member_id")?.value ?? "";
+  const gymMasterToken = cookieStore.get("gymmaster_token")?.value ?? "";
   const isLoggedIn = !!gymMasterId;
 
-  const scans: InBodyScan[] = gymMasterId
-    ? await fetchMemberScans(gymMasterId)
-    : [];
+  // Fetch Supabase scans + GymMaster measurements in parallel
+  const [scans] = await Promise.all([
+    gymMasterId ? fetchMemberScans(gymMasterId) : Promise.resolve([] as InBodyScan[]),
+    gymMasterToken ? getMemberMeasurements(gymMasterToken) : Promise.resolve([]),
+  ]);
 
   // fetchMemberScans returns newest first; we want oldest first for charts/deltas
   const chronological = [...scans].reverse();

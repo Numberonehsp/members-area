@@ -410,3 +410,63 @@ export async function getAllMemberVisitsThisMonth(): Promise<
     visitCount: m.count,
   }))
 }
+
+// ── Body measurements ─────────────────────────────────────────────────────────
+
+export type GymMasterMeasurement = {
+  id: number | string
+  measurement_type_id: string | number
+  measurement_type_name: string
+  value: number
+  unit: string | null
+  created: string       // ISO datetime from GymMaster
+  date: string | null   // date-only field if provided
+}
+
+/**
+ * Fetch a member's body measurements from GymMaster v2.
+ * Requires the member's own login token.
+ * Returns the raw array so the caller can inspect the shape and map accordingly.
+ * Logs the full response on first call to help verify the field names.
+ */
+export async function getMemberMeasurements(
+  memberToken: string
+): Promise<GymMasterMeasurement[]> {
+  if (!SITE_NAME || !MEMBER_API_KEY || !memberToken) return []
+
+  const url = `https://${SITE_NAME}.gymmasteronline.com/portal/api/v2/member/measurements?api_key=${encodeURIComponent(MEMBER_API_KEY)}&token=${encodeURIComponent(memberToken)}`
+
+  let res: Response
+  try {
+    res = await fetch(url, { cache: 'no-store' })
+  } catch (err) {
+    console.warn('[GymMaster] getMemberMeasurements: fetch threw:', err)
+    return []
+  }
+
+  const text = await res.text()
+  // Log full response on every call so we can verify field names in Vercel logs
+  console.log(`[GymMaster] measurements ${res.status}:`, text.slice(0, 1000))
+
+  if (!res.ok) return []
+
+  let data: { error?: string | null; result?: unknown }
+  try {
+    data = JSON.parse(text)
+  } catch {
+    console.warn('[GymMaster] measurements: JSON parse failed')
+    return []
+  }
+
+  if (data.error || !data.result) {
+    console.warn('[GymMaster] measurements: error or no result:', data.error)
+    return []
+  }
+
+  if (!Array.isArray(data.result)) {
+    console.warn('[GymMaster] measurements: result is not an array — shape:', JSON.stringify(data.result).slice(0, 300))
+    return []
+  }
+
+  return data.result as GymMasterMeasurement[]
+}
