@@ -1,6 +1,6 @@
 # Members Area — Session Notes
 
-> Concise reference for picking up a new session. Last updated: 2026-04-28.
+> Concise reference for picking up a new session. Last updated: 2026-05-01.
 
 ---
 
@@ -59,7 +59,11 @@ STAFFHUB_SUPABASE_SERVICE_ROLE_KEY   ← needed for any write operations
 | `events` | Gym calendar (announcements, competitions, 6-week starts) |
 | `challenges` | Active challenges (has `signup_deadline`, `how_to_signup` columns) |
 | `challenge_signups` | `challenge_id`, `gymmaster_member_id`, `signed_up_at` — **no `member_name` column** |
-| `member_awards` | `month`, `award_type` (athlete_of_month / commitment_club), `member_name`, `reason` |
+| `challenge_participants` | `challenge_id`, `gymmaster_member_id`, `member_name` — participant record written at signup |
+| `challenge_categories` | `challenge_id`, `name`, `unit`, `lower_is_better`, `sort_order` |
+| `challenge_measurements` | `participant_id`, `category_id`, `entry_type`, `value` — unique on (participant_id, category_id, entry_type) |
+| `member_awards` | `month` (date), `award_type` (athlete_of_month / commitment_club), `member_name`, `reason` |
+| `award_nominations` | `gymmaster_member_id`, `nominator_name`, `nominee_name`, `reason`, `month` (YYYY-MM) — member-submitted nominations |
 | `member_events` | Personal events added via Goals page — `gymmaster_member_id`, `member_name`, `event_name`, `event_date` |
 
 ---
@@ -104,6 +108,8 @@ STAFFHUB_SUPABASE_SERVICE_ROLE_KEY   ← needed for any write operations
 | Event Planner (on Goals) | Staff Hub `member_events` | ✅ Live |
 | Commitment Club | Removed from nav | — |
 | Community Hub | Staff Hub challenges + awards + events | ✅ Live |
+| Awards page | Live from Staff Hub `member_awards` + nomination form | ✅ Live |
+| Challenge detail | Sign-up + self-reporting tracking grid (writes to Staff Hub) | ✅ Live |
 | Results | Seed data | ⚠️ Seed |
 | Wellbeing | Members Area Supabase `wellbeing_checkins` | ✅ Live |
 | Education | Seed data (nutrition modules added) | ⚠️ Seed |
@@ -112,9 +118,32 @@ STAFFHUB_SUPABASE_SERVICE_ROLE_KEY   ← needed for any write operations
 
 ---
 
+## Cross-Project Integrations (built this session)
+
+### Feature 1 — Challenge self-reporting
+- Members open a challenge detail page → if signed up, see **My Tracking Data** grid
+- Grid shows all categories × entry types (pre / week N / post)
+- On save → `POST /api/challenges/[id]/measurements` → upserts to Staff Hub `challenge_measurements`
+- Staff see the data in Staff Hub → Member Engagement → Challenges tab
+- Key files: `src/app/(member)/community/challenge/[id]/TrackingGrid.tsx`, `src/app/api/challenges/[id]/measurements/route.ts`
+
+### Feature 2 — Athlete of the Month nominations
+- Members see **NominationForm** on the Awards page (`community/awards`)
+- On submit → `POST /api/nominations` → inserts to Staff Hub `award_nominations`
+- Staff see nominations in Staff Hub → Member Engagement → Awards tab (grouped by selected month)
+- Key files: `src/app/(member)/community/awards/NominationForm.tsx`, `src/app/api/nominations/route.ts`
+
+### Feature 3 — Staff message notifications
+- `MemberMessagesWidget.tsx` already built in Staff Hub dashboard
+- Reads unread member messages from Members Area Supabase
+- **Needs Vercel env vars on Staff Hub**: `NEXT_PUBLIC_MEMBERS_AREA_SUPABASE_URL` + `NEXT_PUBLIC_MEMBERS_AREA_SUPABASE_ANON_KEY`
+
+---
+
 ## Deferred / Next Steps
 
-1. **Persist goals to database** — currently only in `useState`, lost on refresh. Needs a `member_goals` Supabase table + API routes.
+1. **Add Vercel env vars to Staff Hub** — `NEXT_PUBLIC_MEMBERS_AREA_SUPABASE_URL` and `NEXT_PUBLIC_MEMBERS_AREA_SUPABASE_ANON_KEY` so `MemberMessagesWidget` works in production.
+2. **Persist goals to database** — currently only in `useState`, lost on refresh. Needs a `member_goals` Supabase table + API routes.
 2. **Staff Hub display of member events** — coaches can't yet see Event Planner entries. Need a section in the Staff Hub member engagement area.
 3. **Add `member_name` to challenge_signups** — run the ALTER TABLE above, then restore the field in the signup route.
 4. **Commitment Club page (live data)** — `/commitment-club` route still exists with hardcoded leaderboard. Either remove or wire up `getAllMemberVisitsThisMonth()`.
@@ -133,10 +162,13 @@ src/
       goals/page.tsx              — server wrapper: EventPlanner + GoalsClient
       community/page.tsx          — challenges, awards, upcoming events
       commitment-club/page.tsx    — still exists, hardcoded data
-      community/challenge/[id]/   — detail + SignUpButton (client)
+      community/challenge/[id]/   — detail + SignUpButton + TrackingGrid (client)
+      community/awards/           — live awards + NominationForm (client)
     api/
       auth/login/route.ts
       challenges/signup/route.ts
+      challenges/[id]/measurements/route.ts — POST (member self-reporting)
+      nominations/route.ts        — POST (Athlete of Month nomination → Staff Hub)
       member-events/route.ts      — POST (add event)
       member-events/[id]/route.ts — DELETE (remove event)
   components/
