@@ -22,68 +22,7 @@ type Goal = {
 
 // ─── Seed data ────────────────────────────────────────────────────────────────
 
-const SEED_GOALS: Goal[] = [
-  {
-    id: "g1",
-    type: "strength",
-    title: "Deadlift 180kg",
-    targetValue: 180,
-    unit: "kg",
-    currentValue: 160,
-    startValue: 160,
-    deadline: "2026-07-01",
-    status: "active",
-    note: "Hit 160 in April testing — 20kg to go.",
-  },
-  {
-    id: "g2",
-    type: "body",
-    title: "Reach 15% body fat",
-    targetValue: 15,
-    unit: "%",
-    currentValue: 18.6,
-    startValue: 18.6,
-    deadline: "2026-09-01",
-    status: "active",
-    note: "",
-  },
-  {
-    id: "g3",
-    type: "habit",
-    title: "Train 12x this month",
-    targetValue: 12,
-    unit: "sessions",
-    currentValue: 9,
-    startValue: 0,
-    deadline: "2026-04-30",
-    status: "active",
-    note: "",
-  },
-  {
-    id: "g4",
-    type: "education",
-    title: "Complete Movement Fundamentals",
-    targetValue: 6,
-    unit: "modules",
-    currentValue: 0,
-    startValue: 0,
-    deadline: "2026-06-01",
-    status: "active",
-    note: "",
-  },
-  {
-    id: "g5",
-    type: "strength",
-    title: "Back Squat 130kg",
-    targetValue: 130,
-    unit: "kg",
-    currentValue: 120,
-    startValue: 100,
-    deadline: "2026-07-01",
-    status: "completed",
-    note: "Actually hit 120 in April — updating target.",
-  },
-];
+const SEED_GOALS: Goal[] = [];
 
 // ─── Type config ──────────────────────────────────────────────────────────────
 

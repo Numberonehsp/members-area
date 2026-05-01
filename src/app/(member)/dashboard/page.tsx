@@ -9,16 +9,31 @@ import GymEvents from "@/components/dashboard/GymEvents";
 import ContinueLearning from "@/components/education/ContinueLearning";
 import { SEED_PATHWAYS, SEED_MODULES } from "@/lib/education-seed";
 import { fetchAnnouncements } from "@/lib/staffhub";
+import { getAnnualVisits } from "@/lib/gymmaster";
 
 export default async function DashboardPage() {
   const cookieStore = await cookies();
   const firstName = cookieStore.get("gymmaster_first_name")?.value || "there";
+  const gymMasterId = cookieStore.get("gymmaster_member_id")?.value ?? "";
+  const token = cookieStore.get("gymmaster_token")?.value ?? "";
+
+  // Visits this month — best-effort, fallback to 0
+  let visitsThisMonth = 0;
+  if (gymMasterId && gymMasterId !== "DEMO" && token && token !== "demo-token") {
+    try {
+      const annual = await getAnnualVisits(gymMasterId, token);
+      const thisMonth = new Date().getMonth() + 1;
+      visitsThisMonth = annual.find((m) => m.month === thisMonth)?.visitCount ?? 0;
+    } catch {
+      // silently ignore
+    }
+  }
 
   // Fetch live announcements from Staff Hub (replaces hardcoded sample data)
   const announcements = await fetchAnnouncements();
   const latestAnnouncement = announcements[0] ?? null;
 
-  const inProgressPathway = SEED_PATHWAYS.find(
+  const inProgressPathway = SEED_PATHWAYS.filter(p => p.is_published !== false).find(
     (p) => (p.completed_count ?? 0) > 0 && (p.completed_count ?? 0) < (p.module_count ?? 0)
   );
   const inProgressModule = inProgressPathway
@@ -36,8 +51,8 @@ export default async function DashboardPage() {
       {/* Announcements — live from Staff Hub */}
       <AnnouncementBanner announcement={latestAnnouncement} />
 
-      {/* Quick Stats — 4 key metrics */}
-      <QuickStats />
+      {/* Quick Stats — live InBody data + visits */}
+      <QuickStats gymMasterId={gymMasterId} visitsThisMonth={visitsThisMonth} />
 
       {/* Main grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

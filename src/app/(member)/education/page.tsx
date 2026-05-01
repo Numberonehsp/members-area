@@ -42,8 +42,8 @@ export default function EducationHubPage() {
         </div>
       )}
 
-      {/* Category tabs + content */}
-      <CategoryTabs pathways={SEED_PATHWAYS} resources={SEED_RESOURCES} />
+      {/* Category tabs + content — only published pathways */}
+      <CategoryTabs pathways={SEED_PATHWAYS.filter(p => p.is_published !== false)} resources={SEED_RESOURCES} />
     </div>
   )
 }

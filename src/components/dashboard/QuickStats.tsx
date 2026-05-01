@@ -1,67 +1,99 @@
-type Stat = {
-  label: string
-  value: string
-  unit: string
-  trend: 'up' | 'down' | 'neutral'
-  trendLabel: string
-  trendPositive: boolean // whether this trend direction is good
+import { fetchMemberScans } from '@/lib/staffhub'
+import type { InBodyScan } from '@/lib/staffhub'
+
+type Props = {
+  gymMasterId: string
+  visitsThisMonth: number
 }
 
-// Seed data — replace with Supabase query when InBody scans exist
-const SEED_STATS: Stat[] = [
-  {
-    label: 'Weight',
-    value: '82.4',
-    unit: 'kg',
-    trend: 'down',
-    trendLabel: '−1.2kg',
-    trendPositive: true,
-  },
-  {
-    label: 'Body Fat',
-    value: '18.6',
-    unit: '%',
-    trend: 'down',
-    trendLabel: '−0.8%',
-    trendPositive: true,
-  },
-  {
-    label: 'Muscle Mass',
-    value: '36.1',
-    unit: 'kg',
-    trend: 'up',
-    trendLabel: '+0.4kg',
-    trendPositive: true,
-  },
-  {
-    label: 'Visits',
-    value: '9',
-    unit: 'this month',
-    trend: 'up',
-    trendLabel: '+2 vs last',
-    trendPositive: true,
-  },
-]
+function delta(current: number | null, previous: number | null, unit: string, lowerIsBetter = false) {
+  if (current === null || previous === null) return null
+  const diff = current - previous
+  if (diff === 0) return null
+  const positive = lowerIsBetter ? diff < 0 : diff > 0
+  return {
+    label: `${diff > 0 ? '+' : ''}${diff.toFixed(1)}${unit}`,
+    positive,
+    direction: diff > 0 ? 'up' : 'down',
+  }
+}
 
-function TrendArrow({ trend, positive }: { trend: Stat['trend']; positive: boolean }) {
-  if (trend === 'neutral') return null
+function formatScanDate(dateStr: string): string {
+  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+  })
+}
+
+function TrendArrow({ dir, positive }: { dir: 'up' | 'down'; positive: boolean }) {
   const colour = positive ? 'text-status-green' : 'text-status-red'
-  return (
-    <span className={`text-xs font-semibold ${colour}`}>
-      {trend === 'up' ? '↑' : '↓'}
-    </span>
-  )
+  return <span className={`text-xs font-semibold ${colour}`}>{dir === 'up' ? '↑' : '↓'}</span>
 }
 
-export default function QuickStats() {
+export default async function QuickStats({ gymMasterId, visitsThisMonth }: Props) {
+  // Fetch last two scans to compute deltas
+  let scans: InBodyScan[] = []
+  if (gymMasterId && gymMasterId !== 'DEMO') {
+    scans = await fetchMemberScans(gymMasterId)
+  }
+
+  const latest = scans[0] ?? null
+  const previous = scans[1] ?? null
+
+  const weightDelta = delta(latest?.weight ?? null, previous?.weight ?? null, 'kg', true)
+  const bfDelta = delta(latest?.bf_pct ?? null, previous?.bf_pct ?? null, '%', true)
+  const smmDelta = delta(latest?.smm ?? null, previous?.smm ?? null, 'kg', false)
+
+  const hasScans = latest !== null
+
+  type Stat = {
+    label: string
+    value: string
+    unit: string
+    delta: { label: string; positive: boolean; direction: string } | null
+  }
+
+  const stats: Stat[] = [
+    {
+      label: 'Weight',
+      value: latest?.weight != null ? latest.weight.toFixed(1) : '—',
+      unit: 'kg',
+      delta: weightDelta,
+    },
+    {
+      label: 'Body Fat',
+      value: latest?.bf_pct != null ? latest.bf_pct.toFixed(1) : '—',
+      unit: '%',
+      delta: bfDelta,
+    },
+    {
+      label: 'Muscle Mass',
+      value: latest?.smm != null ? latest.smm.toFixed(1) : '—',
+      unit: 'kg',
+      delta: smmDelta,
+    },
+    {
+      label: 'Visits',
+      value: String(visitsThisMonth),
+      unit: 'this month',
+      delta: null,
+    },
+  ]
+
   return (
     <div className="mb-4">
       <div className="flex items-center justify-between mb-3">
         <h2 className="font-semibold text-text-primary text-sm">Quick Stats</h2>
-        <span className="text-[10px] text-text-secondary">Latest scan · 3 Apr</span>
+        {hasScans ? (
+          <span className="text-[10px] text-text-secondary">
+            Latest scan · {formatScanDate(latest!.scan_date)}
+          </span>
+        ) : (
+          <span className="text-[10px] text-text-secondary">No InBody scans yet</span>
+        )}
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {SEED_STATS.map((stat) => (
+        {stats.map((stat) => (
           <div
             key={stat.label}
             className="bg-bg-card border border-border-light rounded-2xl p-4 relative overflow-hidden shadow-sm"
@@ -76,16 +108,18 @@ export default function QuickStats() {
               </span>
               <span className="text-xs text-text-secondary">{stat.unit}</span>
             </div>
-            <div className="flex items-center gap-1">
-              <TrendArrow trend={stat.trend} positive={stat.trendPositive} />
-              <span
-                className={`text-xs ${
-                  stat.trendPositive ? 'text-status-green' : 'text-status-red'
-                }`}
-              >
-                {stat.trendLabel}
-              </span>
-            </div>
+            {stat.delta ? (
+              <div className="flex items-center gap-1">
+                <TrendArrow dir={stat.delta.direction as 'up' | 'down'} positive={stat.delta.positive} />
+                <span className={`text-xs ${stat.delta.positive ? 'text-status-green' : 'text-status-red'}`}>
+                  {stat.delta.label} vs prev
+                </span>
+              </div>
+            ) : stat.label === 'Visits' ? (
+              <p className="text-xs text-text-muted">—</p>
+            ) : (
+              <p className="text-xs text-text-muted">No scan data</p>
+            )}
           </div>
         ))}
       </div>

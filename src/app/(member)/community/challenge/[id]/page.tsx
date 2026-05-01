@@ -3,12 +3,13 @@ import { cookies } from 'next/headers'
 import {
   fetchChallenge,
   isMemberSignedUp,
-  fetchParticipant,
   fetchChallengeCategories,
   fetchParticipantMeasurements,
+  staffHubReader,
 } from '@/lib/staffhub'
 import SignUpButton from './SignUpButton'
 import TrackingGrid from './TrackingGrid'
+import InBodyForm from './InBodyForm'
 
 export default async function ChallengePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -22,9 +23,28 @@ export default async function ChallengePage({ params }: { params: Promise<{ id: 
     : false
 
   // If signed up, fetch participant + tracking data
-  const participant = alreadySignedUp && gymMasterId
-    ? await fetchParticipant(challenge.id, gymMasterId)
-    : null
+  type ParticipantRow = {
+    id: string
+    pre_weight_kg: number | null
+    pre_body_fat_pct: number | null
+    pre_fat_mass_kg: number | null
+    pre_smm_kg: number | null
+    post_weight_kg: number | null
+    post_body_fat_pct: number | null
+    post_fat_mass_kg: number | null
+    post_smm_kg: number | null
+  }
+
+  let participant: ParticipantRow | null = null
+  if (alreadySignedUp && gymMasterId) {
+    const { data } = await staffHubReader
+      .from('challenge_participants')
+      .select('id, pre_weight_kg, pre_body_fat_pct, pre_fat_mass_kg, pre_smm_kg, post_weight_kg, post_body_fat_pct, post_fat_mass_kg, post_smm_kg')
+      .eq('challenge_id', challenge.id)
+      .eq('gymmaster_member_id', gymMasterId)
+      .maybeSingle()
+    participant = data
+  }
 
   const [categories, existingMeasurements] = participant
     ? await Promise.all([
@@ -79,23 +99,50 @@ export default async function ChallengePage({ params }: { params: Promise<{ id: 
 
       {/* Self-reporting section — only shown when signed up */}
       {alreadySignedUp && participant && (
-        <div className="mt-8">
-          <div className="flex items-center gap-3 mb-4">
-            <h2 className="font-display font-bold text-text-primary text-lg">My Tracking Data</h2>
-            <div className="flex-1 h-px bg-border-light" />
+        <>
+          {/* Weekly tracking grid */}
+          {categories.length > 0 && (
+            <div className="mt-8">
+              <div className="flex items-center gap-3 mb-4">
+                <h2 className="font-display font-bold text-text-primary text-lg">My Tracking Data</h2>
+                <div className="flex-1 h-px bg-border-light" />
+              </div>
+              <p className="text-xs text-text-muted mb-4">
+                Enter your numbers below — your coach can see these in the Staff Hub.
+              </p>
+              <TrackingGrid
+                challengeId={challenge.id}
+                participantId={participant.id}
+                categories={categories}
+                existingMeasurements={existingMeasurements}
+                startDate={challenge.start_date}
+                endDate={challenge.end_date}
+              />
+            </div>
+          )}
+
+          {/* InBody body composition */}
+          <div className="mt-8">
+            <div className="flex items-center gap-3 mb-4">
+              <h2 className="font-display font-bold text-text-primary text-lg">Body Composition (InBody)</h2>
+              <div className="flex-1 h-px bg-border-light" />
+            </div>
+            <InBodyForm
+              challengeId={challenge.id}
+              participantId={participant.id}
+              existing={{
+                pre_weight_kg: participant.pre_weight_kg,
+                pre_body_fat_pct: participant.pre_body_fat_pct,
+                pre_fat_mass_kg: participant.pre_fat_mass_kg,
+                pre_smm_kg: participant.pre_smm_kg,
+                post_weight_kg: participant.post_weight_kg,
+                post_body_fat_pct: participant.post_body_fat_pct,
+                post_fat_mass_kg: participant.post_fat_mass_kg,
+                post_smm_kg: participant.post_smm_kg,
+              }}
+            />
           </div>
-          <p className="text-xs text-text-muted mb-4">
-            Enter your numbers below — your coach can see these in the Staff Hub.
-          </p>
-          <TrackingGrid
-            challengeId={challenge.id}
-            participantId={participant.id}
-            categories={categories}
-            existingMeasurements={existingMeasurements}
-            startDate={challenge.start_date}
-            endDate={challenge.end_date}
-          />
-        </div>
+        </>
       )}
     </div>
   )

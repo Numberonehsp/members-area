@@ -29,7 +29,7 @@ export const SEED_PATHWAYS: Pathway[] = [
     is_sequential: true,
     display_order: 2,
     thumbnail_url: null,
-    is_published: true,
+    is_published: false, // Coming soon — content not yet recorded
     created_at: '2026-01-01T00:00:00Z',
     module_count: 6,
     total_duration_minutes: 72,
@@ -45,9 +45,9 @@ export const SEED_PATHWAYS: Pathway[] = [
     thumbnail_url: null,
     is_published: true,
     created_at: '2026-01-01T00:00:00Z',
-    module_count: 5,
-    total_duration_minutes: 48,
-    completed_count: 1,
+    module_count: 1,    // Only 1 module recorded so far (Recovery & DOMS)
+    total_duration_minutes: 8,
+    completed_count: 0,
   },
   {
     id: 'mindset-for-progress',
@@ -57,7 +57,7 @@ export const SEED_PATHWAYS: Pathway[] = [
     is_sequential: false,
     display_order: 4,
     thumbnail_url: null,
-    is_published: true,
+    is_published: false, // Coming soon — content not yet recorded
     created_at: '2026-01-01T00:00:00Z',
     module_count: 4,
     total_duration_minutes: 36,
@@ -280,11 +280,8 @@ export const SEED_MODULES: Record<string, Module[]> = {
     },
   ],
   'recovery-toolkit': [
-    { id: 'rt-1', pathway_id: 'recovery-toolkit', title: 'Sleep — the non-negotiable', description: 'Sleep is the most powerful recovery tool you have. What the research says and how to improve yours.', module_order: 1, video_url: 'https://www.youtube.com/embed/dQw4w9WgXcQ', pdf_url: null, duration_minutes: 12, is_published: true, created_at: '2026-01-01T00:00:00Z', progress_status: 'completed', is_locked: false },
-    { id: 'rt-2', pathway_id: 'recovery-toolkit', title: 'Managing stress and cortisol', description: 'Training stress + life stress = total load. Learn to manage both.', module_order: 2, video_url: 'https://www.youtube.com/embed/dQw4w9WgXcQ', pdf_url: null, duration_minutes: 10, is_published: true, created_at: '2026-01-01T00:00:00Z', progress_status: 'not_started', is_locked: false },
-    { id: 'rt-3', pathway_id: 'recovery-toolkit', title: 'Mobility work that actually helps', description: 'Cut through the noise. Which stretches and drills are worth your time.', module_order: 3, video_url: 'https://www.youtube.com/embed/dQw4w9WgXcQ', pdf_url: '/resources/mobility-routine.pdf', duration_minutes: 9, is_published: true, created_at: '2026-01-01T00:00:00Z', progress_status: 'not_started', is_locked: false },
-    { id: 'rt-4', pathway_id: 'recovery-toolkit', title: 'Deload weeks explained', description: "Why backing off is part of the programme, not a sign you're being lazy.", module_order: 4, video_url: 'https://www.youtube.com/embed/dQw4w9WgXcQ', pdf_url: null, duration_minutes: 9, is_published: true, created_at: '2026-01-01T00:00:00Z', progress_status: 'not_started', is_locked: false },
-    { id: 'rt-5', pathway_id: 'recovery-toolkit', title: 'Recovery & DOMS', description: 'What DOMS (Delayed Onset Muscle Soreness) actually is, why beginners feel it more, how nutrition speeds recovery, and when soreness is normal versus a warning sign.', module_order: 5, video_url: null, pdf_url: null, duration_minutes: 8, is_published: true, created_at: '2026-01-01T00:00:00Z', progress_status: 'not_started', is_locked: false },
+    // Only one module recorded so far — more coming soon
+    { id: 'rt-5', pathway_id: 'recovery-toolkit', title: 'Recovery & DOMS', description: 'What DOMS (Delayed Onset Muscle Soreness) actually is, why beginners feel it more, how nutrition speeds recovery, and when soreness is normal versus a warning sign.', module_order: 1, video_url: null, pdf_url: null, duration_minutes: 8, is_published: true, created_at: '2026-01-01T00:00:00Z', progress_status: 'not_started', is_locked: false },
   ],
   'mindset-for-progress': [
     { id: 'mp-1', pathway_id: 'mindset-for-progress', title: 'Setting goals that actually work', description: "Why 'lose weight' is not a goal — and what to replace it with.", module_order: 1, video_url: 'https://www.youtube.com/embed/dQw4w9WgXcQ', pdf_url: null, duration_minutes: 10, is_published: true, created_at: '2026-01-01T00:00:00Z', progress_status: 'not_started', is_locked: false },
