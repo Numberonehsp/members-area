@@ -298,6 +298,95 @@ export async function fetchMemberStrengthResults(gymMasterId: string): Promise<S
   }
 }
 
+// ── Challenge categories & measurements ───────────────────────────────────────
+
+export type ChallengeCategory = {
+  id: string
+  challenge_id: string
+  name: string
+  unit: string | null
+  lower_is_better: boolean
+  sort_order: number
+}
+
+export type ChallengeMeasurement = {
+  id: string
+  participant_id: string
+  category_id: string
+  entry_type: string  // 'pre' | 'week_1' | 'week_2' | ... | 'post'
+  value: number
+  recorded_at: string
+}
+
+/**
+ * Fetch tracking categories for a challenge.
+ */
+export async function fetchChallengeCategories(challengeId: string): Promise<ChallengeCategory[]> {
+  if (!STAFFHUB_URL || !STAFFHUB_ANON_KEY) return []
+  try {
+    const { data, error } = await staffHubReader
+      .from('challenge_categories')
+      .select('id, challenge_id, name, unit, lower_is_better, sort_order')
+      .eq('challenge_id', challengeId)
+      .order('sort_order', { ascending: true })
+    if (error) {
+      console.warn('[StaffHub] fetchChallengeCategories failed:', error.message)
+      return []
+    }
+    return data ?? []
+  } catch (err) {
+    console.warn('[StaffHub] fetchChallengeCategories threw:', err)
+    return []
+  }
+}
+
+/**
+ * Fetch all measurements for a participant.
+ */
+export async function fetchParticipantMeasurements(participantId: string): Promise<ChallengeMeasurement[]> {
+  if (!STAFFHUB_URL || !STAFFHUB_ANON_KEY) return []
+  try {
+    const { data, error } = await staffHubReader
+      .from('challenge_measurements')
+      .select('id, participant_id, category_id, entry_type, value, recorded_at')
+      .eq('participant_id', participantId)
+    if (error) {
+      console.warn('[StaffHub] fetchParticipantMeasurements failed:', error.message)
+      return []
+    }
+    return data ?? []
+  } catch (err) {
+    console.warn('[StaffHub] fetchParticipantMeasurements threw:', err)
+    return []
+  }
+}
+
+/**
+ * Fetch the participant row for a signed-up member.
+ */
+export async function fetchParticipant(
+  challengeId: string,
+  gymMasterId: string,
+): Promise<{ id: string } | null> {
+  if (!STAFFHUB_URL || !STAFFHUB_ANON_KEY) return null
+  try {
+    const { data, error } = await staffHubReader
+      .from('challenge_participants')
+      .select('id')
+      .eq('challenge_id', challengeId)
+      .eq('gymmaster_member_id', gymMasterId)
+      .maybeSingle()
+    if (error) {
+      console.warn('[StaffHub] fetchParticipant failed:', error.message)
+      return null
+    }
+    return data
+  } catch (err) {
+    console.warn('[StaffHub] fetchParticipant threw:', err)
+    return null
+  }
+}
+
 export type MemberEvent = {
   id: string
   gymmaster_member_id: string

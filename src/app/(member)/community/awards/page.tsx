@@ -1,24 +1,11 @@
 import Link from 'next/link'
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type AwardType = 'athlete_of_the_month' | 'commitment_club' | 'achievement'
-
-type Award = {
-  id: string
-  awardType: AwardType
-  memberName: string
-  body: string
-}
-
-type MonthGroup = {
-  month: string
-  awards: Award[]
-}
+import { fetchAwards } from '@/lib/staffhub'
+import type { StaffHubAward } from '@/lib/staffhub'
+import NominationForm from './NominationForm'
 
 // ─── Award config ─────────────────────────────────────────────────────────────
 
-const AWARD_CONFIG: Record<AwardType, {
+const AWARD_CONFIG: Record<string, {
   emoji: string
   label: string
   colour: string
@@ -26,7 +13,7 @@ const AWARD_CONFIG: Record<AwardType, {
   border: string
   accentBar: string
 }> = {
-  athlete_of_the_month: {
+  athlete_of_month: {
     emoji: '🏆',
     label: 'Athlete of the Month',
     colour: 'text-status-amber',
@@ -42,96 +29,36 @@ const AWARD_CONFIG: Record<AwardType, {
     border: 'border-brand/20',
     accentBar: 'from-brand to-transparent',
   },
-  achievement: {
-    emoji: '⭐',
-    label: 'Achievement',
-    colour: 'text-text-primary',
-    bg: 'bg-border-light',
-    border: 'border-border-light',
-    accentBar: 'from-border-light to-transparent',
-  },
 }
 
-// ─── Filter pills ─────────────────────────────────────────────────────────────
+function formatMonth(dateStr: string): string {
+  // dateStr is ISO date e.g. '2026-04-01'
+  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-GB', {
+    month: 'long',
+    year: 'numeric',
+  })
+}
 
-const FILTER_PILLS: { label: string; active: boolean }[] = [
-  { label: 'All', active: true },
-  { label: 'Athlete of the Month', active: false },
-  { label: 'Commitment Club', active: false },
-  { label: 'Achievement', active: false },
-]
-
-// ─── Seed data (most recent first) ────────────────────────────────────────────
-
-const AWARDS_BY_MONTH: MonthGroup[] = [
-  {
-    month: 'April 2026',
-    awards: [
-      {
-        id: 'apr26-1',
-        awardType: 'athlete_of_the_month',
-        memberName: 'Sarah Mitchell',
-        body: 'Incredible consistency and attitude throughout April.',
-      },
-      {
-        id: 'apr26-2',
-        awardType: 'commitment_club',
-        memberName: 'Jamie Pearce',
-        body: '16 visits in April!',
-      },
-      {
-        id: 'apr26-3',
-        awardType: 'achievement',
-        memberName: 'Marcus Webb',
-        body: 'Completed Nutrition Foundations pathway.',
-      },
-    ],
-  },
-  {
-    month: 'January 2026',
-    awards: [
-      {
-        id: 'jan26-1',
-        awardType: 'athlete_of_the_month',
-        memberName: 'Alex Johnson',
-        body: 'New PBs across the board in the January testing block.',
-      },
-      {
-        id: 'jan26-2',
-        awardType: 'commitment_club',
-        memberName: 'Priya Sharma',
-        body: '14 visits in January despite a busy month.',
-      },
-    ],
-  },
-  {
-    month: 'October 2025',
-    awards: [
-      {
-        id: 'oct25-1',
-        awardType: 'athlete_of_the_month',
-        memberName: 'Morgan Evans',
-        body: 'Phenomenal effort across the whole testing block.',
-      },
-      {
-        id: 'oct25-2',
-        awardType: 'achievement',
-        memberName: 'Casey Roberts',
-        body: 'First pull-up! Months of hard work paid off.',
-      },
-      {
-        id: 'oct25-3',
-        awardType: 'achievement',
-        memberName: 'Jordan Williams',
-        body: 'Completed the Movement Fundamentals pathway.',
-      },
-    ],
-  },
-]
+function groupByMonth(awards: StaffHubAward[]): { month: string; label: string; awards: StaffHubAward[] }[] {
+  const map = new Map<string, StaffHubAward[]>()
+  for (const a of awards) {
+    const key = a.month.slice(0, 7) // 'YYYY-MM'
+    if (!map.has(key)) map.set(key, [])
+    map.get(key)!.push(a)
+  }
+  return Array.from(map.entries()).map(([key, items]) => ({
+    month: key,
+    label: formatMonth(key + '-01'),
+    awards: items,
+  }))
+}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function AwardsArchivePage() {
+export default async function AwardsArchivePage() {
+  const awards = await fetchAwards(30)
+  const groups = groupByMonth(awards)
+
   return (
     <div className="space-y-6">
 
@@ -149,74 +76,65 @@ export default function AwardsArchivePage() {
         <h1 className="font-display text-2xl font-bold text-text-primary">Awards</h1>
       </div>
 
-      {/* Filter pills */}
-      <div>
-        <div className="flex flex-wrap gap-2">
-          {FILTER_PILLS.map((pill) => (
-            <span
-              key={pill.label}
-              className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
-                pill.active
-                  ? 'bg-brand text-white border-brand'
-                  : 'bg-bg-card text-text-secondary border-border-light'
-              }`}
-            >
-              {pill.label}
-            </span>
+      {/* Nominate a member */}
+      <NominationForm />
+
+      {/* Awards archive */}
+      {groups.length === 0 ? (
+        <div className="bg-bg-card border border-border-light rounded-2xl p-6 text-center">
+          <p className="text-text-muted text-sm">No awards announced yet — check back soon! 🏆</p>
+        </div>
+      ) : (
+        <div className="space-y-8">
+          {groups.map((group) => (
+            <section key={group.month}>
+              {/* Month heading */}
+              <div className="flex items-center gap-3 mb-4">
+                <h2 className="font-semibold text-text-primary">{group.label}</h2>
+                <div className="flex-1 h-px bg-border-light" />
+              </div>
+
+              {/* Award cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {group.awards.map((award) => {
+                  const cfg = AWARD_CONFIG[award.award_type] ?? AWARD_CONFIG['commitment_club']
+                  return (
+                    <div
+                      key={award.id}
+                      className={`relative rounded-2xl border p-5 overflow-hidden ${cfg.bg} ${cfg.border}`}
+                    >
+                      {/* accent bar */}
+                      <div
+                        className={`absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r ${cfg.accentBar}`}
+                      />
+
+                      {/* Emoji */}
+                      <div className="text-3xl mb-3">{cfg.emoji}</div>
+
+                      {/* Award type label */}
+                      <p className={`text-[10px] tracking-[0.15em] uppercase font-semibold mb-1 ${cfg.colour}`}>
+                        {cfg.label}
+                      </p>
+
+                      {/* Member name */}
+                      <p className="font-display font-bold text-text-primary text-base leading-tight mb-2">
+                        {award.member_name}
+                      </p>
+
+                      {/* Reason */}
+                      {award.reason && (
+                        <p className="text-xs text-text-secondary leading-relaxed italic">
+                          &ldquo;{award.reason}&rdquo;
+                        </p>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </section>
           ))}
         </div>
-        <p className="text-[10px] text-text-secondary mt-2">(filter coming soon)</p>
-      </div>
-
-      {/* Awards grouped by month */}
-      <div className="space-y-8">
-        {AWARDS_BY_MONTH.map((group) => (
-          <section key={group.month}>
-            {/* Month heading */}
-            <div className="flex items-center gap-3 mb-4">
-              <h2 className="font-semibold text-text-primary">{group.month}</h2>
-              <div className="flex-1 h-px bg-border-light" />
-            </div>
-
-            {/* Award cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {group.awards.map((award) => {
-                const cfg = AWARD_CONFIG[award.awardType]
-                return (
-                  <div
-                    key={award.id}
-                    className={`relative rounded-2xl border p-5 overflow-hidden ${cfg.bg} ${cfg.border}`}
-                  >
-                    {/* accent bar */}
-                    <div
-                      className={`absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r ${cfg.accentBar}`}
-                    />
-
-                    {/* Emoji */}
-                    <div className="text-3xl mb-3">{cfg.emoji}</div>
-
-                    {/* Award type label */}
-                    <p className={`text-[10px] tracking-[0.15em] uppercase font-semibold mb-1 ${cfg.colour}`}>
-                      {cfg.label}
-                    </p>
-
-                    {/* Member name */}
-                    <p className="font-display font-bold text-text-primary text-base leading-tight mb-2">
-                      {award.memberName}
-                    </p>
-
-                    {/* Body */}
-                    <p className="text-xs text-text-secondary leading-relaxed italic">
-                      &ldquo;{award.body}&rdquo;
-                    </p>
-                  </div>
-                )
-              })}
-            </div>
-          </section>
-        ))}
-      </div>
-
+      )}
     </div>
   )
 }

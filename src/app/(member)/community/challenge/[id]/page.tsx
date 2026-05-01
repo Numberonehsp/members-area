@@ -1,7 +1,14 @@
 import { notFound } from 'next/navigation'
 import { cookies } from 'next/headers'
-import { fetchChallenge, isMemberSignedUp } from '@/lib/staffhub'
+import {
+  fetchChallenge,
+  isMemberSignedUp,
+  fetchParticipant,
+  fetchChallengeCategories,
+  fetchParticipantMeasurements,
+} from '@/lib/staffhub'
 import SignUpButton from './SignUpButton'
+import TrackingGrid from './TrackingGrid'
 
 export default async function ChallengePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -13,6 +20,18 @@ export default async function ChallengePage({ params }: { params: Promise<{ id: 
   const alreadySignedUp = gymMasterId
     ? await isMemberSignedUp(challenge.id, gymMasterId)
     : false
+
+  // If signed up, fetch participant + tracking data
+  const participant = alreadySignedUp && gymMasterId
+    ? await fetchParticipant(challenge.id, gymMasterId)
+    : null
+
+  const [categories, existingMeasurements] = participant
+    ? await Promise.all([
+        fetchChallengeCategories(challenge.id),
+        fetchParticipantMeasurements(participant.id),
+      ])
+    : [[], []]
 
   const formatDate = (d: string) =>
     new Date(d + 'T00:00:00').toLocaleDateString('en-GB', {
@@ -44,7 +63,7 @@ export default async function ChallengePage({ params }: { params: Promise<{ id: 
         </p>
       )}
 
-      {challenge.how_to_signup && (
+      {challenge.how_to_signup && !alreadySignedUp && (
         <div className="bg-bg-card rounded-xl p-4 mb-6 border border-brand/20">
           <p className="text-xs text-text-muted mb-1 uppercase tracking-wide">How to sign up</p>
           <p className="text-sm text-text-secondary">{challenge.how_to_signup}</p>
@@ -57,6 +76,27 @@ export default async function ChallengePage({ params }: { params: Promise<{ id: 
         deadlinePassed={deadlinePassed}
         isLoggedIn={!!gymMasterId}
       />
+
+      {/* Self-reporting section — only shown when signed up */}
+      {alreadySignedUp && participant && (
+        <div className="mt-8">
+          <div className="flex items-center gap-3 mb-4">
+            <h2 className="font-display font-bold text-text-primary text-lg">My Tracking Data</h2>
+            <div className="flex-1 h-px bg-border-light" />
+          </div>
+          <p className="text-xs text-text-muted mb-4">
+            Enter your numbers below — your coach can see these in the Staff Hub.
+          </p>
+          <TrackingGrid
+            challengeId={challenge.id}
+            participantId={participant.id}
+            categories={categories}
+            existingMeasurements={existingMeasurements}
+            startDate={challenge.start_date}
+            endDate={challenge.end_date}
+          />
+        </div>
+      )}
     </div>
   )
 }
