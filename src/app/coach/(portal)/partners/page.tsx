@@ -168,6 +168,23 @@ export default function PartnerManagerPage() {
     setDraft(BLANK_DRAFT)
     setModalSaved(false)
   }
+  // ── Delete partner ──
+  async function deletePartner(id: string) {
+    if (!confirm('Are you sure you want to permanently delete this partner?')) return
+    try {
+      const res = await fetch('/api/partners', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      })
+      if (!res.ok) throw new Error('Failed to delete partner')
+      setPartners(prev => prev.filter(p => p.id !== id))
+    } catch (err) {
+      console.error('Error deleting partner:', err)
+      setSaveError(err instanceof Error ? err.message : 'Failed to delete')
+    }
+  }
+
   async function saveModal() {
     if (modalMode === 'add') {
       const newPartner: Partner = {
@@ -283,6 +300,15 @@ export default function PartnerManagerPage() {
                 className="text-xs px-3 py-1.5 rounded-lg bg-brand/10 border border-brand/20 text-brand font-medium hover:bg-brand/20 transition-colors"
               >
                 Edit
+              </button>
+
+              {/* Delete */}
+              <button
+                onClick={() => deletePartner(p.id)}
+                className="text-xs px-3 py-1.5 rounded-lg border border-status-red/20 text-status-red hover:bg-status-red/10 transition-colors"
+                title="Delete partner"
+              >
+                🗑
               </button>
             </div>
           </div>

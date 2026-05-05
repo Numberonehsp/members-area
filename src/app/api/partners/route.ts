@@ -35,10 +35,43 @@ export async function GET() {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ data })
+    // Map website_url → website for component compatibility
+    const mapped = (data ?? []).map(p => ({
+      ...p,
+      website: p.website_url ?? '',
+    }))
+
+    return NextResponse.json({ data: mapped })
   } catch (err) {
     console.error('[partners] unexpected error:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const body = await req.json()
+    const { id } = body
+
+    if (!id || !isValidUUID(id)) {
+      return NextResponse.json({ error: 'Valid partner ID required' }, { status: 400 })
+    }
+
+    const { error } = await supabase
+      .from('gym_partners')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      console.error('[partners] delete error:', error)
+      return NextResponse.json({ error: `Database error: ${error.message}` }, { status: 500 })
+    }
+
+    return NextResponse.json({ ok: true })
+  } catch (err) {
+    console.error('[partners] delete error:', err)
+    const errorMsg = err instanceof Error ? err.message : 'Unknown error'
+    return NextResponse.json({ error: `Failed to delete partner: ${errorMsg}` }, { status: 500 })
   }
 }
 
