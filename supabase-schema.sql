@@ -200,7 +200,10 @@ CREATE TABLE IF NOT EXISTS member_awards (
 CREATE TABLE IF NOT EXISTS gym_partners (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
+  category TEXT DEFAULT '',
+  emoji TEXT DEFAULT '',
   description TEXT,
+  offer TEXT DEFAULT '',
   logo_url TEXT,
   website_url TEXT,
   display_order INT DEFAULT 0,

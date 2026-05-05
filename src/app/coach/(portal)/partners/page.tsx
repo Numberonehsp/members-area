@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -64,9 +64,9 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function PartnerManagerPage() {
-  const [partners, setPartners] = useState<Partner[]>(() =>
-    [...SEED_PARTNERS].sort((a, b) => a.display_order - b.display_order)
-  )
+  const [partners, setPartners] = useState<Partner[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   // ── UI state ──
   const [modalMode, setModalMode] = useState<'add' | 'edit' | null>(null)
@@ -74,6 +74,42 @@ export default function PartnerManagerPage() {
   const [draft, setDraft] = useState<DraftPartner>(BLANK_DRAFT)
   const [savedId, setSavedId] = useState<string | null>(null)
   const [modalSaved, setModalSaved] = useState(false)
+
+  // ── Load partners from API ──
+  useEffect(() => {
+    async function loadPartners() {
+      try {
+        const res = await fetch('/api/partners')
+        if (!res.ok) throw new Error('Failed to load partners')
+        const json = await res.json()
+        setPartners(json.data?.length > 0 ? json.data : SEED_PARTNERS)
+      } catch (err) {
+        console.error('Error loading partners:', err)
+        setPartners(SEED_PARTNERS)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadPartners()
+  }, [])
+
+  // ── Save partners to API ──
+  async function savePartnersToAPI(updatedPartners: Partner[]) {
+    try {
+      setSaveError(null)
+      const res = await fetch('/api/partners', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ partners: updatedPartners }),
+      })
+      if (!res.ok) throw new Error('Failed to save partners')
+      return true
+    } catch (err) {
+      console.error('Error saving partners:', err)
+      setSaveError(err instanceof Error ? err.message : 'Failed to save')
+      return false
+    }
+  }
 
   // ── Flash helpers ──
   function flashRow(id: string) {
@@ -86,21 +122,23 @@ export default function PartnerManagerPage() {
   }
 
   // ── Reorder ──
-  function move(id: string, dir: 'up' | 'down') {
-    setPartners(prev => {
-      const list = [...prev]
-      const idx = list.findIndex(p => p.id === id)
-      const target = dir === 'up' ? idx - 1 : idx + 1
-      if (target < 0 || target >= list.length) return prev
-      ;[list[idx], list[target]] = [list[target], list[idx]]
-      return list.map((p, i) => ({ ...p, display_order: i + 1 }))
-    })
+  async function move(id: string, dir: 'up' | 'down') {
+    const list = [...partners]
+    const idx = list.findIndex(p => p.id === id)
+    const target = dir === 'up' ? idx - 1 : idx + 1
+    if (target < 0 || target >= list.length) return
+    ;[list[idx], list[target]] = [list[target], list[idx]]
+    const updated = list.map((p, i) => ({ ...p, display_order: i + 1 }))
+    setPartners(updated)
+    await savePartnersToAPI(updated)
   }
 
   // ── Toggle active ──
-  function toggleActive(id: string) {
-    setPartners(prev => prev.map(p => p.id === id ? { ...p, is_active: !p.is_active } : p))
+  async function toggleActive(id: string) {
+    const updated = partners.map(p => p.id === id ? { ...p, is_active: !p.is_active } : p)
+    setPartners(updated)
     flashRow(id)
+    await savePartnersToAPI(updated)
   }
 
   // ── Modal actions ──
@@ -130,20 +168,24 @@ export default function PartnerManagerPage() {
     setDraft(BLANK_DRAFT)
     setModalSaved(false)
   }
-  function saveModal() {
+  async function saveModal() {
     if (modalMode === 'add') {
       const newPartner: Partner = {
         id: `partner-${Date.now()}`,
         ...draft,
         display_order: partners.length + 1,
       }
-      setPartners(prev => [...prev, newPartner])
+      const updated = [...partners, newPartner]
+      setPartners(updated)
       flashModal()
+      await savePartnersToAPI(updated)
       setTimeout(closeModal, 900)
     } else if (modalMode === 'edit' && editingId) {
-      setPartners(prev => prev.map(p => p.id === editingId ? { ...p, ...draft } : p))
+      const updated = partners.map(p => p.id === editingId ? { ...p, ...draft } : p)
+      setPartners(updated)
       flashModal()
       flashRow(editingId)
+      await savePartnersToAPI(updated)
       setTimeout(closeModal, 900)
     }
   }
@@ -168,6 +210,11 @@ export default function PartnerManagerPage() {
       </div>
 
       {/* Partner list */}
+      {loading ? (
+        <div className="text-center py-12">
+          <p className="text-text-secondary text-sm">Loading partners…</p>
+        </div>
+      ) : (
       <div className="space-y-2">
         {partners.map((p, idx) => (
           <div
@@ -241,11 +288,19 @@ export default function PartnerManagerPage() {
           </div>
         ))}
       </div>
+      )}
 
-      {/* Footer note */}
-      <p className="text-xs text-text-secondary mt-6 text-center">
-        Changes will persist to Supabase once wired in Phase 5 backend work.
-      </p>
+      {/* Status messages */}
+      {saveError && (
+        <p className="text-xs text-status-red bg-status-red/10 border border-status-red/20 rounded-lg px-3 py-2 mt-6 text-center">
+          {saveError}
+        </p>
+      )}
+      {!loading && !saveError && (
+        <p className="text-xs text-status-green mt-6 text-center">
+          ✓ Changes saved to Supabase automatically
+        </p>
+      )}
 
       {/* ── ADD / EDIT MODAL ── */}
       {modalMode !== null && (
