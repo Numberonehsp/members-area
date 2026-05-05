@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -20,9 +20,23 @@ type Goal = {
   note: string;
 };
 
-// ─── Seed data ────────────────────────────────────────────────────────────────
+// ─── DB row → Goal mapper ─────────────────────────────────────────────────────
 
-const SEED_GOALS: Goal[] = [];
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function rowToGoal(r: any): Goal {
+  return {
+    id: r.id,
+    type: r.type as GoalType,
+    title: r.title,
+    targetValue: parseFloat(r.target_value),
+    currentValue: parseFloat(r.current_value),
+    startValue: parseFloat(r.start_value),
+    unit: r.unit ?? '',
+    deadline: r.deadline,
+    status: r.status as GoalStatus,
+    note: r.note ?? '',
+  }
+}
 
 // ─── Type config ──────────────────────────────────────────────────────────────
 
@@ -452,10 +466,20 @@ function GoalModal({
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 export default function GoalsClient() {
-  const [goals, setGoals] = useState<Goal[]>(SEED_GOALS);
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
   const [completedOpen, setCompletedOpen] = useState(false);
+
+  // ── Load goals from API on mount ──
+  useEffect(() => {
+    fetch('/api/goals')
+      .then((r) => r.json())
+      .then((json) => setGoals((json.goals ?? []).map(rowToGoal)))
+      .catch((err) => console.error('Failed to load goals:', err))
+      .finally(() => setLoading(false))
+  }, [])
 
   const activeGoals = goals.filter((g) => g.status === "active");
   const completedGoals = goals.filter((g) => g.status === "completed");
@@ -469,45 +493,80 @@ export default function GoalsClient() {
   function openEditModal(goal: Goal) { setEditingGoal(goal); setModalOpen(true); }
   function closeModal() { setModalOpen(false); setEditingGoal(null); }
 
-  function handleMarkComplete(id: string) {
+  async function handleMarkComplete(id: string) {
+    // Optimistic update
     setGoals((prev) => prev.map((g) => (g.id === id ? { ...g, status: "completed" } : g)));
+    try {
+      await fetch('/api/goals', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status: 'completed' }),
+      })
+    } catch (err) {
+      console.error('Failed to mark complete:', err)
+    }
   }
 
-  function handleSave(form: FormState, editingId: string | null) {
+  async function handleSave(form: FormState, editingId: string | null) {
     if (editingId) {
+      const update = {
+        id: editingId,
+        title: form.title,
+        type: form.type,
+        current_value: parseFloat(form.currentValue) || 0,
+        target_value: parseFloat(form.targetValue) || 0,
+        unit: form.unit,
+        deadline: form.deadline,
+        note: form.note,
+      }
+      // Optimistic update
       setGoals((prev) =>
         prev.map((g) =>
           g.id === editingId
-            ? {
-                ...g,
-                title: form.title,
-                type: form.type,
-                currentValue: parseFloat(form.currentValue) || 0,
-                targetValue: parseFloat(form.targetValue) || 0,
-                unit: form.unit,
-                deadline: form.deadline,
-                note: form.note,
-              }
+            ? { ...g, title: form.title, type: form.type, currentValue: update.current_value, targetValue: update.target_value, unit: form.unit, deadline: form.deadline, note: form.note }
             : g
         )
-      );
+      )
+      try {
+        await fetch('/api/goals', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(update),
+        })
+      } catch (err) {
+        console.error('Failed to update goal:', err)
+      }
     } else {
-      const currentVal = parseFloat(form.currentValue) || 0;
-      const newGoal: Goal = {
-        id: generateId(),
+      const currentVal = parseFloat(form.currentValue) || 0
+      const payload = {
         type: form.type,
         title: form.title,
-        currentValue: currentVal,
-        startValue: currentVal,  // locked at creation time
-        targetValue: parseFloat(form.targetValue) || 0,
+        current_value: currentVal,
+        start_value: currentVal,
+        target_value: parseFloat(form.targetValue) || 0,
         unit: form.unit,
         deadline: form.deadline,
-        status: "active",
         note: form.note,
-      };
-      setGoals((prev) => [...prev, newGoal]);
+      }
+      try {
+        const res = await fetch('/api/goals', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        const json = await res.json()
+        if (json.goal) {
+          setGoals((prev) => [...prev, rowToGoal(json.goal)])
+        }
+      } catch (err) {
+        console.error('Failed to create goal:', err)
+      }
     }
     closeModal();
+  }
+
+  if (loading) {
+    return <div className="text-center py-12"><p className="text-text-secondary text-sm">Loading goals…</p></div>
   }
 
   return (
