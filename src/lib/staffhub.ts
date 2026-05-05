@@ -397,16 +397,20 @@ export type MemberEvent = {
 }
 
 /**
- * Fetch upcoming events for a single member, ordered by event date ascending.
- * Used by the EventPlanner server component on the Goals page.
+ * Fetch upcoming events for a single member in the next 7 days, ordered by event date ascending.
+ * Used by the EventPlanner server component on the Goals page and the coach member detail page.
  */
 export async function fetchMemberEvents(gymMasterId: string): Promise<MemberEvent[]> {
   if (!STAFFHUB_URL || !STAFFHUB_ANON_KEY) return []
   try {
+    const today = new Date().toISOString().split('T')[0]
+    const sevenDaysFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     const { data, error } = await staffHubReader
       .from('member_events')
       .select('id, gymmaster_member_id, member_name, event_name, event_date, created_at')
       .eq('gymmaster_member_id', gymMasterId)
+      .gte('event_date', today)
+      .lte('event_date', sevenDaysFromNow)
       .order('event_date', { ascending: true })
     if (error) {
       console.warn('[StaffHub] fetchMemberEvents failed:', error.message)

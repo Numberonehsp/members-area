@@ -1,5 +1,5 @@
 import { getAllMembers } from '@/lib/gymmaster'
-import { fetchMemberScans, fetchMemberStrengthResults } from '@/lib/staffhub'
+import { fetchMemberScans, fetchMemberStrengthResults, fetchMemberEvents } from '@/lib/staffhub'
 import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
 
@@ -59,12 +59,13 @@ export default async function CoachMemberDetailPage({
   const { id } = await params
 
   // Fetch everything in parallel
-  const [allMembers, scans, strengthResults, goals, visitCache] = await Promise.all([
+  const [allMembers, scans, strengthResults, goals, visitCache, memberEvents] = await Promise.all([
     getAllMembers(),
     fetchMemberScans(id),
     fetchMemberStrengthResults(id),
     getMemberGoals(id),
     getMemberVisitCache(id),
+    fetchMemberEvents(id),
   ])
 
   const member = allMembers.find((m) => m.id === id)
@@ -279,6 +280,24 @@ export default async function CoachMemberDetailPage({
               <p className="text-[10px] text-text-secondary/50 mt-2">
                 Cache updated {fmt(visitCache.updated_at)}
               </p>
+            )}
+          </div>
+
+          {/* Upcoming Events (next 7 days) */}
+          <div className="bg-bg-card border border-border-light rounded-2xl p-5 shadow-sm relative overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-brand via-brand-light to-transparent" />
+            <h2 className="font-semibold text-text-primary text-sm mb-3">🗓️ Upcoming Events <span className="text-[10px] font-normal text-text-secondary">(next 7 days)</span></h2>
+            {memberEvents.length === 0 ? (
+              <p className="text-sm text-text-secondary">No upcoming events in the next 7 days.</p>
+            ) : (
+              <div className="space-y-2">
+                {memberEvents.map((e) => (
+                  <div key={e.id} className="flex items-center justify-between py-2 border-b border-border-light last:border-0">
+                    <span className="text-sm text-text-primary font-medium">{e.event_name}</span>
+                    <span className="text-xs text-brand font-semibold">{fmt(e.event_date)}</span>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
 
