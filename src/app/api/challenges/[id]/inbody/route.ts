@@ -49,7 +49,7 @@ export async function POST(
     return NextResponse.json({ error: 'Participant not found' }, { status: 403 })
   }
 
-  const challenge = (participant as { challenges: { start_date: string; end_date: string } | null }).challenges
+  const challenge = (participant as { id: string; challenges: { start_date: string; end_date: string } | null }).challenges
 
   // Only update fields that were provided (not null/undefined)
   function val(v: unknown) {
