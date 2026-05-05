@@ -2,7 +2,6 @@ import { getAllMembers } from '@/lib/gymmaster'
 import { fetchMemberScans, fetchMemberStrengthResults } from '@/lib/staffhub'
 import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
-import type { PageProps } from '@/.next/types/app/coach/(portal)/members/[id]/page'
 
 // ─── Data helpers ─────────────────────────────────────────────────────────────
 
@@ -54,7 +53,9 @@ function progressPct(current: number, target: number, start: number) {
 
 export default async function CoachMemberDetailPage({
   params,
-}: PageProps<"/coach/members/[id]">) {
+}: {
+  params: Promise<{ id: string }>
+}) {
   const { id } = await params
 
   // Fetch everything in parallel
