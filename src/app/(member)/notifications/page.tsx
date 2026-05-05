@@ -52,71 +52,7 @@ const FILTERS: { key: FilterKey; label: string }[] = [
 // Seed data
 // ---------------------------------------------------------------------------
 
-const SEED_NOTIFICATIONS: Notification[] = [
-  {
-    id: "n1",
-    type: "message",
-    title: "New message from coaching team",
-    body: "Hey Ed, great session on Tuesday! Your deadlift form is really coming together.",
-    createdAt: "2026-04-09T09:00:00Z",
-    isRead: false,
-    href: "/messages",
-  },
-  {
-    id: "n2",
-    type: "award",
-    title: "You've been awarded Commitment Club!",
-    body: "16 visits in March — brilliant consistency. Keep it up!",
-    createdAt: "2026-04-08T14:00:00Z",
-    isRead: false,
-    href: "/community/awards",
-  },
-  {
-    id: "n3",
-    type: "challenge",
-    title: "April Attendance Challenge — 7 days left",
-    body: "You're at 9/16 visits. You can do it!",
-    createdAt: "2026-04-07T10:00:00Z",
-    isRead: false,
-    href: "/community/challenge/1",
-  },
-  {
-    id: "n4",
-    type: "result",
-    title: "New InBody scan recorded",
-    body: "Your latest body composition results are now available.",
-    createdAt: "2026-04-03T11:00:00Z",
-    isRead: true,
-    href: "/results/body-composition",
-  },
-  {
-    id: "n5",
-    type: "announcement",
-    title: "Testing week starts Monday",
-    body: "Back Squat, Deadlift, 500m Row and Pull-Up. Book your slot.",
-    createdAt: "2026-04-01T09:00:00Z",
-    isRead: true,
-    href: "/dashboard",
-  },
-  {
-    id: "n6",
-    type: "challenge",
-    title: "You joined the April Attendance Challenge",
-    body: "Good luck! You're competing with 12 other members.",
-    createdAt: "2026-04-01T08:00:00Z",
-    isRead: true,
-    href: "/community/challenge/1",
-  },
-  {
-    id: "n7",
-    type: "announcement",
-    title: "Gym closed Good Friday & Easter Monday",
-    body: "Friday 18th and Monday 21st April — plan accordingly.",
-    createdAt: "2026-03-28T09:00:00Z",
-    isRead: true,
-    href: "/dashboard",
-  },
-];
+const SEED_NOTIFICATIONS: Notification[] = [];
 
 // ---------------------------------------------------------------------------
 // Helpers

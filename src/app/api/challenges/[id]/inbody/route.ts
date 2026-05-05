@@ -10,6 +10,11 @@ export async function POST(
 
   const cookieStore = await cookies()
   const gymMasterId = cookieStore.get('gymmaster_member_id')?.value
+  const memberName = [
+    cookieStore.get('gymmaster_first_name')?.value,
+    cookieStore.get('gymmaster_last_name')?.value,
+  ].filter(Boolean).join(' ') || null
+
   if (!gymMasterId) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
   }
@@ -31,10 +36,10 @@ export async function POST(
     return NextResponse.json({ error: 'participantId required' }, { status: 400 })
   }
 
-  // Verify the participant belongs to this member + challenge
+  // Verify the participant belongs to this member + challenge, and fetch challenge dates
   const { data: participant, error: pErr } = await staffHubWriter
     .from('challenge_participants')
-    .select('id')
+    .select('id, challenges(start_date, end_date)')
     .eq('id', participantId)
     .eq('challenge_id', challengeId)
     .eq('gymmaster_member_id', gymMasterId)
@@ -43,6 +48,8 @@ export async function POST(
   if (pErr || !participant) {
     return NextResponse.json({ error: 'Participant not found' }, { status: 403 })
   }
+
+  const challenge = (participant as { challenges: { start_date: string; end_date: string } | null }).challenges
 
   // Only update fields that were provided (not null/undefined)
   function val(v: unknown) {
@@ -65,6 +72,7 @@ export async function POST(
     return NextResponse.json({ ok: true, message: 'Nothing to update' })
   }
 
+  // Update challenge_participants
   const { error } = await staffHubWriter
     .from('challenge_participants')
     .update(update)
@@ -73,6 +81,60 @@ export async function POST(
   if (error) {
     console.error('[inbody] update failed:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  // Also mirror pre/post values to inbody_scans so they appear in Results > Body Composition
+  if (challenge) {
+    const scanUpserts: Array<{
+      gymmaster_member_id: string
+      scan_date: string
+      weight: number | null
+      bf_pct: number | null
+      bf_mass: number | null
+      smm: number | null
+      member_name: string | null
+      notes: string | null
+    }> = []
+
+    // Pre scan → challenge start_date
+    const hasPreValues = preWeight !== undefined || preBf !== undefined || preFat !== undefined || preSmm !== undefined
+    if (hasPreValues && challenge.start_date) {
+      scanUpserts.push({
+        gymmaster_member_id: gymMasterId,
+        scan_date: challenge.start_date,
+        weight: preWeight ?? null,
+        bf_pct: preBf ?? null,
+        bf_mass: preFat ?? null,
+        smm: preSmm ?? null,
+        member_name: memberName,
+        notes: 'Challenge pre-scan (auto-linked)',
+      })
+    }
+
+    // Post scan → challenge end_date
+    const hasPostValues = postWeight !== undefined || postBf !== undefined || postFat !== undefined || postSmm !== undefined
+    if (hasPostValues && challenge.end_date) {
+      scanUpserts.push({
+        gymmaster_member_id: gymMasterId,
+        scan_date: challenge.end_date,
+        weight: postWeight ?? null,
+        bf_pct: postBf ?? null,
+        bf_mass: postFat ?? null,
+        smm: postSmm ?? null,
+        member_name: memberName,
+        notes: 'Challenge post-scan (auto-linked)',
+      })
+    }
+
+    for (const scanData of scanUpserts) {
+      const { error: scanErr } = await staffHubWriter
+        .from('inbody_scans')
+        .upsert(scanData, { onConflict: 'gymmaster_member_id,scan_date' })
+      if (scanErr) {
+        console.warn('[inbody] inbody_scans upsert failed:', scanErr.message)
+        // Non-fatal — challenge data was saved successfully
+      }
+    }
   }
 
   return NextResponse.json({ ok: true })

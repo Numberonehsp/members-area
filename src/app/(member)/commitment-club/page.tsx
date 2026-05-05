@@ -1,31 +1,27 @@
 import { getMonthlyVisits } from '@/lib/gymmaster'
+import { cookies } from 'next/headers'
 import Link from 'next/link'
 
-// TODO: replace with logged-in member's gymmaster_member_id from session
-const DEMO_GYMMASTER_ID = '1001'
 const TARGET = 12
 
-// Seed leaderboard — members who've hit 12+ this month
-// TODO: replace with real data from getAllMemberVisitsThisMonth() joined with members table
-const SEED_QUALIFIERS = [
-  { name: 'Sarah J.', visits: 15, isYou: false },
-  { name: 'You', visits: 9, isYou: true },
-  { name: 'Mike T.', visits: 14, isYou: false },
-  { name: 'Emma R.', visits: 12, isYou: false },
-  { name: 'James O.', visits: 13, isYou: false },
-  { name: 'Priya S.', visits: 7, isYou: false },
-]
-
-const SEED_PAST_WINNERS = [
-  { month: 'March 2026', name: 'Mike T.' },
-  { month: 'February 2026', name: 'Emma R.' },
-  { month: 'January 2026', name: 'Sarah J.' },
-]
+// Leaderboard and past winners will be wired to live data in a future update
+const SEED_QUALIFIERS: { name: string; visits: number; isYou: boolean }[] = []
+const SEED_PAST_WINNERS: { month: string; name: string }[] = []
 
 export default async function CommitmentClubPage() {
+  const cookieStore = await cookies()
+  const gymMasterId = cookieStore.get('gymmaster_member_id')?.value ?? ''
+
   const now = new Date()
-  const data = await getMonthlyVisits(DEMO_GYMMASTER_ID, now.getFullYear(), now.getMonth() + 1)
-  const { visitCount } = data
+  let visitCount = 0
+  if (gymMasterId && gymMasterId !== 'DEMO') {
+    try {
+      const data = await getMonthlyVisits(gymMasterId, now.getFullYear(), now.getMonth() + 1)
+      visitCount = data.visitCount
+    } catch {
+      // silently ignore
+    }
+  }
   const qualified = visitCount >= TARGET
   const remaining = Math.max(TARGET - visitCount, 0)
   const pct = Math.min(Math.round((visitCount / TARGET) * 100), 100)

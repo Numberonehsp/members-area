@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+
 type Partner = {
   name: string;
   category: string;
@@ -93,6 +97,13 @@ const categories = [
 ];
 
 export default function PartnersPage() {
+  const [activeCategory, setActiveCategory] = useState("All");
+
+  const filtered =
+    activeCategory === "All"
+      ? partners
+      : partners.filter((p) => p.category === activeCategory);
+
   return (
     <div>
       {/* Page header */}
@@ -106,70 +117,75 @@ export default function PartnersPage() {
         Exclusive offers and discounts for Number One HSP members.
       </p>
 
-      {/* Category filter pills (static) */}
-      <div className="flex flex-wrap gap-2 mb-2">
+      {/* Category filter pills */}
+      <div className="flex flex-wrap gap-2 mb-8">
         {categories.map((cat) => (
-          <span
+          <button
             key={cat}
-            className={
-              cat === "All"
-                ? "px-3 py-1 rounded-full text-xs font-medium bg-brand text-white"
-                : "px-3 py-1 rounded-full text-xs font-medium border border-border-light text-text-secondary"
-            }
+            type="button"
+            onClick={() => setActiveCategory(cat)}
+            className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+              activeCategory === cat
+                ? "bg-brand text-white border-brand"
+                : "bg-bg-card border-border-light text-text-secondary hover:text-text-primary hover:border-brand/30"
+            }`}
           >
             {cat}
-          </span>
+          </button>
         ))}
       </div>
-      <p className="text-[10px] text-text-secondary mb-8 opacity-60">
-        (more filtering coming soon)
-      </p>
 
       {/* Partners grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {partners.map((partner) => (
-          <div
-            key={partner.name}
-            className="bg-bg-card border border-border-light rounded-2xl shadow-sm relative overflow-hidden p-5 flex flex-col"
-          >
-            {/* Teal top accent bar */}
-            <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-brand via-brand to-transparent" />
-
-            {/* Emoji */}
-            <span className="text-4xl leading-none mb-3 block">{partner.emoji}</span>
-
-            {/* Category badge */}
-            <span className="inline-block self-start px-2 py-0.5 rounded-full text-[10px] font-medium border border-border-light text-text-secondary mb-2">
-              {partner.category}
-            </span>
-
-            {/* Name */}
-            <h2 className="font-semibold text-text-primary text-sm mb-2">
-              {partner.name}
-            </h2>
-
-            {/* Description */}
-            <p className="text-xs text-text-secondary leading-snug line-clamp-3 mb-3 flex-1">
-              {partner.description}
-            </p>
-
-            {/* Offer highlight */}
-            <div className="rounded-lg px-3 py-2 mb-4 text-xs text-brand font-medium bg-brand/10 border border-brand/20">
-              🎁 {partner.offer}
-            </div>
-
-            {/* Visit Website button */}
-            <a
-              href={`https://${partner.website}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block text-center text-xs font-medium border border-border-light text-text-secondary rounded-lg py-2 transition-colors hover:bg-brand hover:border-brand hover:text-white"
+      {filtered.length === 0 ? (
+        <div className="bg-bg-card border border-border-light rounded-2xl p-10 text-center">
+          <p className="text-text-secondary text-sm">No partners in this category yet.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filtered.map((partner) => (
+            <div
+              key={partner.name}
+              className="bg-bg-card border border-border-light rounded-2xl shadow-sm relative overflow-hidden p-5 flex flex-col"
             >
-              Visit Website →
-            </a>
-          </div>
-        ))}
-      </div>
+              {/* Teal top accent bar */}
+              <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-brand via-brand to-transparent" />
+
+              {/* Emoji */}
+              <span className="text-4xl leading-none mb-3 block">{partner.emoji}</span>
+
+              {/* Category badge */}
+              <span className="inline-block self-start px-2 py-0.5 rounded-full text-[10px] font-medium border border-border-light text-text-secondary mb-2">
+                {partner.category}
+              </span>
+
+              {/* Name */}
+              <h2 className="font-semibold text-text-primary text-sm mb-2">
+                {partner.name}
+              </h2>
+
+              {/* Description */}
+              <p className="text-xs text-text-secondary leading-snug line-clamp-3 mb-3 flex-1">
+                {partner.description}
+              </p>
+
+              {/* Offer highlight */}
+              <div className="rounded-lg px-3 py-2 mb-4 text-xs text-brand font-medium bg-brand/10 border border-brand/20">
+                🎁 {partner.offer}
+              </div>
+
+              {/* Visit Website button */}
+              <a
+                href={`https://${partner.website}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-center text-xs font-medium border border-border-light text-text-secondary rounded-lg py-2 transition-colors hover:bg-brand hover:border-brand hover:text-white"
+              >
+                Visit Website →
+              </a>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

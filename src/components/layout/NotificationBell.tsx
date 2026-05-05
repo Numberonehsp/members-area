@@ -44,60 +44,14 @@ const TYPE_CONFIG: Record<
 // Seed data
 // ---------------------------------------------------------------------------
 
-const SEED_NOTIFICATIONS: Notification[] = [
-  {
-    id: "n1",
-    type: "message",
-    title: "New message from coaching team",
-    body: "Hey Ed, great session on Tuesday! Your deadlift form is really coming together.",
-    createdAt: "2026-04-09T09:00:00Z",
-    isRead: false,
-    href: "/messages",
-  },
-  {
-    id: "n2",
-    type: "award",
-    title: "You've been awarded Commitment Club!",
-    body: "16 visits in March — brilliant consistency. Keep it up!",
-    createdAt: "2026-04-08T14:00:00Z",
-    isRead: false,
-    href: "/community/awards",
-  },
-  {
-    id: "n3",
-    type: "challenge",
-    title: "April Attendance Challenge — 7 days left",
-    body: "You're at 9/16 visits. You can do it!",
-    createdAt: "2026-04-07T10:00:00Z",
-    isRead: false,
-    href: "/community/challenge/1",
-  },
-  {
-    id: "n4",
-    type: "result",
-    title: "New InBody scan recorded",
-    body: "Your latest body composition results are now available.",
-    createdAt: "2026-04-03T11:00:00Z",
-    isRead: true,
-    href: "/results/body-composition",
-  },
-  {
-    id: "n5",
-    type: "announcement",
-    title: "Testing week starts Monday",
-    body: "Back Squat, Deadlift, 500m Row and Pull-Up. Book your slot.",
-    createdAt: "2026-04-01T09:00:00Z",
-    isRead: true,
-    href: "/dashboard",
-  },
-];
+const SEED_NOTIFICATIONS: Notification[] = [];
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 function timeAgo(iso: string): string {
-  const now = new Date("2026-04-09T12:00:00Z");
+  const now = new Date();
   const then = new Date(iso);
   const diffMs = now.getTime() - then.getTime();
   const diffH = Math.floor(diffMs / (1000 * 60 * 60));
@@ -220,6 +174,11 @@ export default function NotificationBell() {
           </div>
 
           {/* List */}
+          {notifications.length === 0 && (
+            <div className="px-4 py-8 text-center">
+              <p className="text-sm text-text-secondary">No notifications yet.</p>
+            </div>
+          )}
           <ul>
             {notifications.map((n) => {
               const cfg = TYPE_CONFIG[n.type];

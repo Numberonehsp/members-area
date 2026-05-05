@@ -28,14 +28,17 @@ function calcStreak(
 
 export default async function AttendanceStreak() {
   const cookieStore = await cookies()
-  const memberId = cookieStore.get('gymmaster_member_id')?.value ?? 'seed'
+  const memberId = cookieStore.get('gymmaster_member_id')?.value ?? ''
   const memberToken = cookieStore.get('gymmaster_token')?.value ?? ''
 
   const today = new Date()
   const currentMonth = today.getMonth() + 1
 
-  // Single API call — returns all 12 months for the current year
-  const annualData = await getAnnualVisits(memberId, memberToken || undefined)
+  // Single API call — returns all 12 months for the current year (skip for DEMO / unauthenticated)
+  const annualData =
+    memberId && memberId !== 'DEMO' && memberToken && memberToken !== 'demo-token'
+      ? await getAnnualVisits(memberId, memberToken)
+      : []
 
   const thisMonthData = annualData.find(m => m.month === currentMonth)
   const visitCount = thisMonthData?.visitCount ?? 0

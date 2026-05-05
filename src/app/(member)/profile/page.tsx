@@ -1,8 +1,11 @@
-// TODO Phase 1: fetch real data from GymMaster API + Supabase members table
-// const member = await getMemberAccount(session.token)
-// const memberships = await getMemberships(session.token)
+import { cookies } from 'next/headers'
 
-export default function ProfilePage() {
+export default async function ProfilePage() {
+  const cookieStore = await cookies()
+  const firstName = cookieStore.get('gymmaster_first_name')?.value ?? ''
+  const lastName = cookieStore.get('gymmaster_last_name')?.value ?? ''
+  const fullName = [firstName, lastName].filter(Boolean).join(' ') || '—'
+
   return (
     <div>
       <p className="text-[11px] tracking-[0.3em] uppercase text-brand mb-2">
@@ -22,7 +25,7 @@ export default function ProfilePage() {
           </h2>
           <div className="space-y-3 text-sm">
             {[
-              { label: "Full Name", value: "—" },
+              { label: "Full Name", value: fullName },
               { label: "Email", value: "—" },
               { label: "Phone", value: "—" },
               { label: "Date of Birth", value: "—" },
@@ -34,7 +37,7 @@ export default function ProfilePage() {
             ))}
           </div>
           <p className="text-[11px] text-text-secondary/60 italic mt-4">
-            Details are managed in GymMaster — contact your coach to update.
+            Details are managed in GymMaster — speak to a coach to update them.
           </p>
         </div>
 
@@ -70,7 +73,7 @@ export default function ProfilePage() {
             </div>
           </div>
           <p className="text-[11px] text-text-secondary/60 italic mt-4">
-            🚧 Pulled from GymMaster memberships API — Phase 1.
+            Billing details are managed in GymMaster — contact us for any queries.
           </p>
         </div>
 
@@ -102,7 +105,7 @@ export default function ProfilePage() {
             ))}
           </div>
           <p className="text-[11px] text-text-secondary/60 italic mt-4">
-            🚧 Saves to member preferences — Phase 1.
+            Email notification preferences — coming soon.
           </p>
         </div>
 
@@ -133,7 +136,7 @@ export default function ProfilePage() {
             </button>
           </div>
           <p className="text-[11px] text-text-secondary/60 italic mt-4">
-            🚧 Data export and deletion requests — Phase 5 (GDPR compliance).
+            To request data export or account deletion, please contact us directly.
           </p>
         </div>
 

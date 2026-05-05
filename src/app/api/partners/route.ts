@@ -1,10 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { randomUUID } from 'crypto'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
+
+// Validate if a string is a valid UUID v4 format
+function isValidUUID(id: unknown): boolean {
+  if (typeof id !== 'string') return false
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  return uuidRegex.test(id)
+}
+
+// Ensure ID is a valid UUID, generate new one if not
+function ensureValidUUID(id: unknown): string {
+  if (isValidUUID(id)) {
+    return id as string
+  }
+  // Generate a new UUID for invalid IDs
+  return randomUUID()
+}
 
 export async function GET() {
   try {
@@ -41,7 +58,7 @@ export async function POST(req: NextRequest) {
       .from('gym_partners')
       .upsert(
         partners.map(partner => ({
-          id: partner.id,
+          id: ensureValidUUID(partner.id),
           name: partner.name,
           category: partner.category || '',
           emoji: partner.emoji || '',
