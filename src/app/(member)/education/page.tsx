@@ -1,18 +1,13 @@
 import CategoryTabs from '@/components/education/CategoryTabs'
 import ContinueLearning from '@/components/education/ContinueLearning'
-import { SEED_PATHWAYS, SEED_MODULES, SEED_RESOURCES } from '@/lib/education-seed'
+import { SEED_MODULES } from '@/lib/education-seed'
+import { getContentWithOverrides } from '@/lib/content'
 
-// TODO Phase 2 wiring: replace with Supabase queries
-// const { data: pathways } = await supabase
-//   .from('education_pathways').select('*, education_modules(count)')
-//   .eq('is_published', true).order('display_order')
-// const { data: resources } = await supabase
-//   .from('education_resources').select('*')
-//   .eq('is_published', true).order('created_at', { ascending: false })
+export default async function EducationHubPage() {
+  const { pathways, resources } = await getContentWithOverrides()
+  const publishedPathways = pathways.filter(p => p.is_published !== false)
 
-export default function EducationHubPage() {
-  // Find the active in-progress module for Continue Learning
-  const inProgressPathway = SEED_PATHWAYS.find(p =>
+  const inProgressPathway = publishedPathways.find(p =>
     (p.completed_count ?? 0) > 0 && (p.completed_count ?? 0) < (p.module_count ?? 0)
   )
   const inProgressModule = inProgressPathway
@@ -22,7 +17,6 @@ export default function EducationHubPage() {
 
   return (
     <div>
-      {/* Header */}
       <div className="mb-8">
         <p className="text-[11px] tracking-[0.3em] uppercase text-brand mb-2">Learn</p>
         <h1 className="font-display text-5xl md:text-6xl text-text-primary leading-[0.95] mb-3">
@@ -35,15 +29,13 @@ export default function EducationHubPage() {
         </p>
       </div>
 
-      {/* Continue Learning */}
       {inProgressPathway && inProgressModule && (
         <div className="mb-10 max-w-xl">
           <ContinueLearning pathway={inProgressPathway} module={inProgressModule} />
         </div>
       )}
 
-      {/* Category tabs + content — only published pathways */}
-      <CategoryTabs pathways={SEED_PATHWAYS.filter(p => p.is_published !== false)} resources={SEED_RESOURCES} />
+      <CategoryTabs pathways={publishedPathways} resources={resources.filter(r => r.is_published !== false)} />
     </div>
   )
 }

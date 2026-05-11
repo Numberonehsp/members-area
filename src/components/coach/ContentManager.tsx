@@ -84,10 +84,21 @@ export default function ContentManager({ pathways: initPathways, modules: initMo
     setTimeout(() => setSavedId(null), 2000)
   }
 
+  // ── Persist publish state ──
+  function savePublish(id: string, entity_type: 'pathway' | 'module' | 'resource', is_published: boolean) {
+    fetch('/api/coach/content/publish', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, entity_type, is_published }),
+    })
+  }
+
   // ── Pathway actions ──
   function togglePathwayPublished(id: string) {
-    setPathways(prev => prev.map(p => p.id === id ? { ...p, is_published: !p.is_published } : p))
+    const newValue = !pathways.find(p => p.id === id)!.is_published
+    setPathways(prev => prev.map(p => p.id === id ? { ...p, is_published: newValue } : p))
     flashSaved(id)
+    savePublish(id, 'pathway', newValue)
   }
 
   // ── Module modal ──
@@ -143,12 +154,21 @@ export default function ContentManager({ pathways: initPathways, modules: initMo
 
   // ── Module publish toggle ──
   function toggleModulePublished(pathwayId: string, moduleId: string) {
-    setModulesMap(prev => ({
-      ...prev,
-      [pathwayId]: (prev[pathwayId] ?? []).map(m =>
-        m.id === moduleId ? { ...m, is_published: !m.is_published } : m
-      ),
-    }))
+    let newValue = false
+    setModulesMap(prev => {
+      const updated = {
+        ...prev,
+        [pathwayId]: (prev[pathwayId] ?? []).map(m => {
+          if (m.id === moduleId) {
+            newValue = !m.is_published
+            return { ...m, is_published: newValue }
+          }
+          return m
+        }),
+      }
+      return updated
+    })
+    savePublish(moduleId, 'module', newValue)
   }
 
   // ── Resource modal ──
@@ -186,8 +206,16 @@ export default function ContentManager({ pathways: initPathways, modules: initMo
     closeResourceModal()
   }
   function toggleResourcePublished(id: string) {
-    setResources(prev => prev.map(r => r.id === id ? { ...r, is_published: !r.is_published } : r))
+    let newValue = false
+    setResources(prev => prev.map(r => {
+      if (r.id === id) {
+        newValue = !r.is_published
+        return { ...r, is_published: newValue }
+      }
+      return r
+    }))
     flashSaved(id)
+    savePublish(id, 'resource', newValue)
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
