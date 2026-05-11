@@ -6,6 +6,7 @@ const STAFF_API_KEY = process.env.GYMMASTER_STAFF_API_KEY ?? ''
 export type GymMasterMemberSummary = {
   id: string
   name: string
+  membershipType: string
 }
 
 export async function GET() {
@@ -34,6 +35,7 @@ export async function GET() {
     .map((m) => ({
       id: String(m.memberid ?? m.id ?? ''),
       name: [m.firstname, m.surname].filter(Boolean).join(' ') || String(m.name ?? 'Unknown'),
+      membershipType: String(m.membershipname ?? m.membership_name ?? m.membership ?? ''),
     }))
     .filter((m) => m.id)
     .sort((a, b) => a.name.localeCompare(b.name))

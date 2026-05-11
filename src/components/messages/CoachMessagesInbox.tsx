@@ -19,6 +19,7 @@ type BroadcastState = 'idle' | 'sending' | 'done' | 'error'
 type GymMasterMember = {
   id: string
   name: string
+  membershipType: string
 }
 
 function formatTime(iso: string | null) {
@@ -42,6 +43,7 @@ export default function CoachMessagesInbox() {
   const [broadcastBody, setBroadcastBody] = useState('')
   const [broadcastState, setBroadcastState] = useState<BroadcastState>('idle')
   const [broadcastResult, setBroadcastResult] = useState<string>('')
+  const [broadcastGroup, setBroadcastGroup] = useState<string>('existing')
 
   // New message modal state
   const [showNewMessage, setShowNewMessage] = useState(false)
@@ -80,17 +82,40 @@ export default function CoachMessagesInbox() {
     setThreads(ts => ts.map(t => t.id === thread.id ? { ...t, unread_count: 0 } : t))
   }
 
+  async function loadAllMembers() {
+    if (allMembers.length > 0) return
+    setLoadingMembers(true)
+    const res = await fetch('/api/gymmaster/members')
+    if (res.ok) {
+      const { members } = await res.json()
+      setAllMembers(members ?? [])
+    }
+    setLoadingMembers(false)
+  }
+
   async function handleBroadcast() {
-    if (!broadcastBody.trim() || threads.length === 0) return
+    if (!broadcastBody.trim()) return
     setBroadcastState('sending')
+
+    let ids: string[]
+    if (broadcastGroup === 'existing') {
+      ids = threads.map(t => t.gymmaster_member_id)
+    } else {
+      ids = allMembers
+        .filter(m => m.membershipType === broadcastGroup)
+        .map(m => m.id)
+    }
+
+    if (ids.length === 0) {
+      setBroadcastState('error')
+      setBroadcastResult('No members in this group')
+      return
+    }
 
     const res = await fetch('/api/coach/messages/broadcast', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        gymmaster_member_ids: threads.map(t => t.gymmaster_member_id),
-        body: broadcastBody.trim(),
-      }),
+      body: JSON.stringify({ gymmaster_member_ids: ids, body: broadcastBody.trim() }),
     })
 
     if (res.ok) {
@@ -102,6 +127,7 @@ export default function CoachMessagesInbox() {
         setShowBroadcast(false)
         setBroadcastState('idle')
         setBroadcastResult('')
+        setBroadcastGroup('existing')
         loadThreads()
       }, 2000)
     } else {
@@ -115,15 +141,13 @@ export default function CoachMessagesInbox() {
     setSelectedMember(null)
     setNewMessageBody('')
     setMemberSearch('')
-    if (allMembers.length === 0) {
-      setLoadingMembers(true)
-      const res = await fetch('/api/gymmaster/members')
-      if (res.ok) {
-        const { members } = await res.json()
-        setAllMembers(members ?? [])
-      }
-      setLoadingMembers(false)
-    }
+    await loadAllMembers()
+  }
+
+  async function openBroadcast() {
+    setShowBroadcast(true)
+    setBroadcastGroup('existing')
+    await loadAllMembers()
   }
 
   async function handleSendNew() {
@@ -161,6 +185,12 @@ export default function CoachMessagesInbox() {
     m.name.toLowerCase().includes(memberSearch.toLowerCase())
   )
 
+  const membershipTypes = Array.from(new Set(allMembers.map(m => m.membershipType).filter(Boolean))).sort()
+
+  const broadcastRecipientCount = broadcastGroup === 'existing'
+    ? threads.length
+    : allMembers.filter(m => m.membershipType === broadcastGroup).length
+
   const activeThread = threads.find(t => t.id === activeThreadId)
   const totalUnread = threads.reduce((sum, t) => sum + t.unread_count, 0)
 
@@ -187,7 +217,7 @@ export default function CoachMessagesInbox() {
             + New Message
           </button>
           <button
-            onClick={() => setShowBroadcast(true)}
+            onClick={openBroadcast}
             className="px-4 py-2 rounded-xl border border-border-light text-text-secondary text-sm font-medium hover:border-brand/40 hover:text-text-primary transition-colors"
           >
             Broadcast
@@ -199,33 +229,48 @@ export default function CoachMessagesInbox() {
       {showBroadcast && (
         <div className="mb-4 shrink-0 bg-bg-card border border-brand/30 rounded-2xl p-4">
           <div className="flex items-center justify-between mb-3">
-            <div>
-              <p className="text-sm font-semibold text-text-primary">Broadcast message</p>
-              <p className="text-xs text-text-secondary mt-0.5">
-                Sends to all {threads.length} member{threads.length !== 1 ? 's' : ''} with existing conversations
-              </p>
-            </div>
+            <p className="text-sm font-semibold text-text-primary">Broadcast message</p>
             <button
-              onClick={() => { setShowBroadcast(false); setBroadcastState('idle'); setBroadcastBody('') }}
+              onClick={() => { setShowBroadcast(false); setBroadcastState('idle'); setBroadcastBody(''); setBroadcastGroup('existing') }}
               className="text-text-secondary hover:text-text-primary text-lg leading-none"
             >
               ×
             </button>
           </div>
+
+          {/* Group selector */}
+          <div className="mb-3">
+            <label className="text-xs font-medium text-text-secondary block mb-1.5">Send to</label>
+            <select
+              value={broadcastGroup}
+              onChange={e => setBroadcastGroup(e.target.value)}
+              className="w-full bg-bg-main border border-border-light rounded-xl px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:border-brand/50"
+            >
+              <option value="existing">Members with existing conversations ({threads.length})</option>
+              {loadingMembers ? (
+                <option disabled>Loading groups…</option>
+              ) : membershipTypes.map(type => (
+                <option key={type} value={type}>
+                  {type} ({allMembers.filter(m => m.membershipType === type).length} members)
+                </option>
+              ))}
+            </select>
+          </div>
+
           <textarea
             value={broadcastBody}
             onChange={e => setBroadcastBody(e.target.value)}
             rows={3}
-            placeholder="Type your message to all members..."
+            placeholder="Type your message…"
             className="w-full bg-bg-main border border-border-light rounded-xl px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:border-brand/50 resize-none mb-3"
           />
           <div className="flex items-center gap-3">
             <button
-              disabled={!broadcastBody.trim() || broadcastState === 'sending' || threads.length === 0}
+              disabled={!broadcastBody.trim() || broadcastState === 'sending' || broadcastRecipientCount === 0}
               onClick={handleBroadcast}
               className="px-4 py-2 rounded-xl bg-brand text-white text-sm font-medium hover:bg-brand-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {broadcastState === 'sending' ? 'Sending…' : `Send to ${threads.length} member${threads.length !== 1 ? 's' : ''}`}
+              {broadcastState === 'sending' ? 'Sending…' : `Send to ${broadcastRecipientCount} member${broadcastRecipientCount !== 1 ? 's' : ''}`}
             </button>
             {broadcastResult && (
               <p className={`text-sm ${broadcastState === 'error' ? 'text-red-500' : 'text-brand'}`}>
