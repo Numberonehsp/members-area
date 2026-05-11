@@ -2,6 +2,7 @@ import { getAllMembers } from '@/lib/gymmaster'
 import { fetchMemberScans, fetchMemberStrengthResults, fetchMemberEvents } from '@/lib/staffhub'
 import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
+import CoachMemberTasks from '@/components/coach/CoachMemberTasks'
 
 // ─── Data helpers ─────────────────────────────────────────────────────────────
 
@@ -18,6 +19,15 @@ async function getMemberGoals(gymMasterId: string) {
     .select('*')
     .eq('gymmaster_member_id', gymMasterId)
     .order('created_at', { ascending: true })
+  return data ?? []
+}
+
+async function getMemberTasks(gymMasterId: string) {
+  const { data } = await db()
+    .from('member_tasks')
+    .select('id, title, description, due_date, set_by, completed_at, created_at')
+    .eq('gymmaster_member_id', gymMasterId)
+    .order('created_at', { ascending: false })
   return data ?? []
 }
 
@@ -59,13 +69,14 @@ export default async function CoachMemberDetailPage({
   const { id } = await params
 
   // Fetch everything in parallel
-  const [allMembers, scans, strengthResults, goals, visitCache, memberEvents] = await Promise.all([
+  const [allMembers, scans, strengthResults, goals, visitCache, memberEvents, tasks] = await Promise.all([
     getAllMembers(),
     fetchMemberScans(id),
     fetchMemberStrengthResults(id),
     getMemberGoals(id),
     getMemberVisitCache(id),
     fetchMemberEvents(id),
+    getMemberTasks(id),
   ])
 
   const member = allMembers.find((m) => m.id === id)
@@ -148,6 +159,13 @@ export default async function CoachMemberDetailPage({
               <p className="text-sm text-text-secondary">Member not found in GymMaster.</p>
             )}
           </div>
+
+          {/* Tasks */}
+          <CoachMemberTasks
+            memberId={id}
+            memberName={member ? `${member.firstName} ${member.lastName}` : `Member ${id}`}
+            initialTasks={tasks}
+          />
 
           {/* Goals summary */}
           <div className="bg-bg-card border border-border-light rounded-2xl p-5 shadow-sm relative overflow-hidden">
