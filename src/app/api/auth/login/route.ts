@@ -19,9 +19,11 @@ async function updateVisitCache(
     const lastActiveMonth = [...annual].reverse().find(m => m.visitCount > 0)
     let lastVisitDate: string | null = null
     if (lastActiveMonth) {
-      // Use the last day of that month as a conservative estimate
-      const d = new Date(now.getFullYear(), lastActiveMonth.month, 0) // day 0 = last day of prev month
-      lastVisitDate = d.toISOString().split('T')[0]
+      // Use the last day of that month, capped at today to avoid future dates
+      const lastDay = new Date(now.getFullYear(), lastActiveMonth.month, 0)
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      const capped = lastDay > today ? today : lastDay
+      lastVisitDate = capped.toISOString().split('T')[0]
     }
 
     const supabase = createClient(

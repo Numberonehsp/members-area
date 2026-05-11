@@ -32,7 +32,8 @@ function mergeWithCache(members: GymMasterMember[], cache: Awaited<ReturnType<ty
     const cached = cache.get(m.id)
     return {
       ...m,
-      lastVisitDate: cached?.lastVisitDate ?? m.lastVisitDate,
+      // Only use visit cache data — GymMaster's lastVisitDate is unreliable (can be future-dated)
+      lastVisitDate: cached?.lastVisitDate ?? null,
       visitsThisMonth: cached ? cached.visitsThisMonth : null,
       cacheUpdatedAt: cached?.updatedAt ?? null,
     }

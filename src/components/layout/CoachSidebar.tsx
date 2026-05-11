@@ -10,7 +10,6 @@ const navItems = [
   { href: "/coach/messages",              label: "Messages"         },
   { href: "/coach/input/inbody",          label: "InBody Input"     },
   { href: "/coach/input/strength",        label: "S&C Input"        },
-  { href: "/coach/input/testing",         label: "S&C Testing"      },
   { href: "/coach/input/testing/manage",  label: "Manage Tests"     },
   { href: "/coach/content",               label: "Content"          },
   { href: "/coach/community",             label: "Community"        },

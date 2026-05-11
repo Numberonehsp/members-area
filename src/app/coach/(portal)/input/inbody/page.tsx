@@ -18,6 +18,22 @@ function formatDate(d: string) {
 export default function CoachInBodyInputPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [membersLoading, setMembersLoading] = useState(true);
+  const [backfilling, setBackfilling] = useState(false);
+  const [backfillMsg, setBackfillMsg] = useState<string | null>(null);
+
+  async function handleBackfill() {
+    setBackfilling(true);
+    setBackfillMsg(null);
+    const res = await fetch("/api/coach/backfill-names", { method: "POST" });
+    const data = await res.json().catch(() => ({}));
+    setBackfilling(false);
+    if (res.ok) {
+      setBackfillMsg(`Done — updated ${data.scans_updated} scan${data.scans_updated !== 1 ? "s" : ""} and ${data.strength_updated} strength result${data.strength_updated !== 1 ? "s" : ""}. Reload to see changes.`);
+      loadRecentScans();
+    } else {
+      setBackfillMsg(data.error ?? "Backfill failed");
+    }
+  }
   const [recentScans, setRecentScans] = useState<InBodyScan[]>([]);
 
   const [selectedMemberId, setSelectedMemberId] = useState("");
@@ -203,8 +219,21 @@ export default function CoachInBodyInputPage() {
       <div className="bg-bg-card border border-border-light rounded-2xl shadow-sm overflow-hidden">
         <div className="relative">
           <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-brand via-brand-light to-transparent" />
-          <div className="px-5 py-4 border-b border-border-light">
+          <div className="px-5 py-4 border-b border-border-light flex items-center justify-between gap-4 flex-wrap">
             <h2 className="font-semibold text-text-primary text-sm">Recent Scans</h2>
+            <div className="flex items-center gap-3 flex-wrap">
+              {backfillMsg && (
+                <span className="text-xs text-text-secondary">{backfillMsg}</span>
+              )}
+              <button
+                onClick={handleBackfill}
+                disabled={backfilling}
+                title="Fix missing member names on old records by looking them up from GymMaster"
+                className="text-xs text-text-secondary border border-border-light px-3 py-1.5 rounded-lg hover:border-brand/40 hover:text-brand transition-colors disabled:opacity-50"
+              >
+                {backfilling ? "Fixing names…" : "Fix missing names"}
+              </button>
+            </div>
           </div>
           {recentScans.length === 0 ? (
             <p className="px-5 py-8 text-sm text-text-secondary text-center">No scans recorded yet.</p>

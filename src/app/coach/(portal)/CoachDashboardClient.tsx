@@ -13,17 +13,23 @@ const STATUS_CONFIG: Record<EngagementStatus, { dot: string; label: string; text
   unknown:    { dot: 'bg-text-secondary', label: 'No data',   text: 'text-text-secondary', bg: 'bg-bg-main',         border: 'border-border-light'     },
 }
 
-function getStatus(lastVisitDate: string | null): EngagementStatus {
-  if (!lastVisitDate) return 'unknown'
+function daysAgo(lastVisitDate: string | null): number | null {
+  if (!lastVisitDate) return null
   const days = Math.floor((Date.now() - new Date(lastVisitDate).getTime()) / 86400000)
+  return Math.max(0, days) // cap at 0 — never show negative (future dates from old cache entries)
+}
+
+function getStatus(lastVisitDate: string | null): EngagementStatus {
+  const days = daysAgo(lastVisitDate)
+  if (days === null) return 'unknown'
   if (days <= 7) return 'engaged'
   if (days <= 21) return 'at_risk'
   return 'disengaged'
 }
 
 function daysAgoLabel(lastVisitDate: string | null): string {
-  if (!lastVisitDate) return '—'
-  const days = Math.floor((Date.now() - new Date(lastVisitDate).getTime()) / 86400000)
+  const days = daysAgo(lastVisitDate)
+  if (days === null) return '—'
   if (days === 0) return 'Today'
   if (days === 1) return 'Yesterday'
   return `${days}d ago`

@@ -1,6 +1,6 @@
 # Members Area — Session Notes
 
-> Concise reference for picking up a new session. Last updated: 2026-05-01.
+> Concise reference for picking up a new session. Last updated: 2026-05-11.
 
 ---
 
@@ -52,6 +52,17 @@ STAFFHUB_SUPABASE_SERVICE_ROLE_KEY   ← needed for any write operations
 
 ---
 
+## GymMaster Measurements API (v2)
+
+- **Endpoint:** `GET https://numberonehsp.gymmasteronline.com/portal/api/v2/member/measurements`
+- **Auth:** `?api_key={GYMMASTER_MEMBER_API_KEY}&token={member_token}` (query params)
+- **Returns:** Array of measurements sorted by `created` timestamp, newest first
+- **Status:** Fetch function added to `gymmaster.ts` with full response logging. Response shape not yet confirmed — check Vercel logs after a logged-in member visits `/results/body-composition` for the `[GymMaster] measurements 200:` log line.
+- **Next step:** Once response shape confirmed, map fields to `InBodyScan` format and merge with Supabase data.
+- `getMemberMeasurements(memberToken)` in `src/lib/gymmaster.ts` — returns raw `GymMasterMeasurement[]`
+
+---
+
 ## Staff Hub Supabase Tables (relevant to Members Area)
 
 | Table | Purpose |
@@ -65,6 +76,8 @@ STAFFHUB_SUPABASE_SERVICE_ROLE_KEY   ← needed for any write operations
 | `member_awards` | `month` (date), `award_type` (athlete_of_month / commitment_club), `member_name`, `reason` |
 | `award_nominations` | `gymmaster_member_id`, `nominator_name`, `nominee_name`, `reason`, `month` (YYYY-MM) — member-submitted nominations |
 | `member_events` | Personal events added via Goals page — `gymmaster_member_id`, `member_name`, `event_name`, `event_date` |
+| `inbody_scans` | `gymmaster_member_id`, `scan_date`, `weight`, `smm`, `bf_pct`, `bf_mass`, `member_name`, `notes`; unique on `(gymmaster_member_id, scan_date)` |
+| `strength_results` | `gymmaster_member_id`, `exercise`, `result_value`, `result_notes`, `tested_date`, `member_name`, `testing_block` |
 
 ---
 
@@ -110,7 +123,8 @@ STAFFHUB_SUPABASE_SERVICE_ROLE_KEY   ← needed for any write operations
 | Community Hub | Staff Hub challenges + awards + events | ✅ Live |
 | Awards page | Live from Staff Hub `member_awards` + nomination form | ✅ Live |
 | Challenge detail | Sign-up + self-reporting tracking grid (writes to Staff Hub) | ✅ Live |
-| Results | Seed data | ⚠️ Seed |
+| Results — Body Composition | Supabase `inbody_scans` + member self-entry + coach entry | ✅ Live |
+| Results — Strength & Conditioning | Supabase `strength_results` + member self-entry + coach entry | ✅ Live |
 | Wellbeing | Members Area Supabase `wellbeing_checkins` | ✅ Live |
 | Education | Seed data (nutrition modules added) | ⚠️ Seed |
 | Messages | Members Area Supabase `messages` + `message_threads` | ✅ Live |
@@ -118,7 +132,7 @@ STAFFHUB_SUPABASE_SERVICE_ROLE_KEY   ← needed for any write operations
 
 ---
 
-## Cross-Project Integrations (built this session)
+## Cross-Project Integrations (built in previous sessions)
 
 ### Feature 1 — Challenge self-reporting
 - Members open a challenge detail page → if signed up, see **My Tracking Data** grid
@@ -133,22 +147,69 @@ STAFFHUB_SUPABASE_SERVICE_ROLE_KEY   ← needed for any write operations
 - Staff see nominations in Staff Hub → Member Engagement → Awards tab (grouped by selected month)
 - Key files: `src/app/(member)/community/awards/NominationForm.tsx`, `src/app/api/nominations/route.ts`
 
-### Feature 3 — Staff message notifications
+### Feature 3 — Challenge signup linking (Members Area → Staff Hub)
+- Member clicks "Sign Up" on a challenge → `POST /api/challenges/signup`
+- Route upserts to `challenge_signups`, then checks `challenge_participants` and inserts if not present
+- Fetches member full name from GymMaster via `gymmaster_token` cookie for `member_name` field
+- `isMemberSignedUp()` in `staffhub.ts` checks `challenge_participants` (not `challenge_signups`) — this makes it self-healing: a member stuck in signups-only state can retry
+- Key fix: previous version checked `challenge_signups`, causing stuck "You're signed up" state
+
+### Feature 4 — Staff message notifications
 - `MemberMessagesWidget.tsx` already built in Staff Hub dashboard
 - Reads unread member messages from Members Area Supabase
 - **Needs Vercel env vars on Staff Hub**: `NEXT_PUBLIC_MEMBERS_AREA_SUPABASE_URL` + `NEXT_PUBLIC_MEMBERS_AREA_SUPABASE_ANON_KEY`
 
 ---
 
+## Features Built This Session (2026-05-11)
+
+### 1 — Body Composition Page (live data + interactive chart)
+- Page at `/results/body-composition` is now a server component reading `gymmaster_member_id` cookie
+- Fetches from `inbody_scans` via `fetchMemberScans()` in `staffhub.ts`
+- Replaced static weight trend bars with `BodyCompositionChart` — interactive SVG dual-metric line chart
+  - 4 toggle buttons: Weight, SMM, BF%, BF Mass (each with its own colour)
+  - Max 2 metrics simultaneously; independent Y-axis scaling per metric
+  - Hover: vertical dashed line, value labels, enlarged dots
+  - Shows last 5 scans chronologically
+- **Member self-entry:** `AddScanForm` client component — "Add Scan" button expands inline form (date, weight, SMM, BF%, BF Mass, notes). Posts to `/api/inbody/member` which reads `gymmaster_member_id` cookie for auth
+- **Coach entry:** `/coach/input/inbody` page — member dropdown (from GymMaster), all 4 fields, saves via `/api/inbody` (service role key, no member cookie required). Recent scans table below form
+- Key files: `src/components/results/BodyCompositionChart.tsx`, `src/components/results/AddScanForm.tsx`, `src/app/api/inbody/member/route.ts`, `src/app/api/inbody/route.ts`
+
+### 2 — Strength & Conditioning Page (live data + member input)
+- Page at `/results/strength` is now a server component — reads cookie, fetches `strength_results`, passes to `StrengthClient`
+- `StrengthClient` (client component) renders 10 exercise cards:
+  - Hex Deadlift 3RM, Back Squat 3RM, Bench Press 3RM, Clean & Jerk 1RM, Snatch 1RM, Pull Up Max Reps, 9min AMRAP, 6min Time Trial, 5km Run, 10km Run
+  - Each card: latest result, PB badge (computed dynamically), history row (last 5), notes display, `+ Add Result` inline form
+  - Notes field shown only for 9min AMRAP and 6min Time Trial
+  - Running times stored as decimal minutes, displayed as MM:SS
+  - PB: highest value for lifting/reps, lowest for running
+- Summary bar: total exercises tracked, results recorded count, current PBs count
+- Member POST: `/api/strength` reads `gymmaster_member_id` cookie
+- **Coach entry:** `/coach/input/strength` — member dropdown, exercise picker (same 10), result + date, notes for AMRAP/Time Trial. Posts to `/api/coach/strength`. Recent results table below
+- Coach sidebar updated with "S&C Input" link
+- Key files: `src/components/results/StrengthClient.tsx`, `src/app/api/strength/route.ts`, `src/app/api/coach/strength/route.ts`, `src/app/coach/(portal)/input/strength/page.tsx`
+
+### 3 — GymMaster Measurements Pull (in progress)
+- `getMemberMeasurements(memberToken)` added to `gymmaster.ts`
+- Called on body-composition page load alongside Supabase fetch
+- Full response logged to Vercel (`[GymMaster] measurements 200:`) to confirm field names
+- **Waiting:** need to visit `/results/body-composition` while logged in and check Vercel logs to see actual response shape, then build the mapping
+
+### 4 — GymMaster members API route
+- `GET /api/gymmaster/members` — fetches all active (`status=Current`, not prospect) members from GymMaster staff API, returns `{id, name}[]` sorted alphabetically
+- Used by both coach input pages (InBody and Strength) for member dropdowns
+
+---
+
 ## Deferred / Next Steps
 
-1. **Add Vercel env vars to Staff Hub** — `NEXT_PUBLIC_MEMBERS_AREA_SUPABASE_URL` and `NEXT_PUBLIC_MEMBERS_AREA_SUPABASE_ANON_KEY` so `MemberMessagesWidget` works in production.
-2. **Persist goals to database** — currently only in `useState`, lost on refresh. Needs a `member_goals` Supabase table + API routes.
-2. **Staff Hub display of member events** — coaches can't yet see Event Planner entries. Need a section in the Staff Hub member engagement area.
-3. **Add `member_name` to challenge_signups** — run the ALTER TABLE above, then restore the field in the signup route.
-4. **Commitment Club page (live data)** — `/commitment-club` route still exists with hardcoded leaderboard. Either remove or wire up `getAllMemberVisitsThisMonth()`.
-5. **Results page** — wire to real InBody scan data.
-6. **Mobile review** — app is responsive but hasn't had a dedicated mobile pass.
+1. **GymMaster measurements mapping** — visit `/results/body-composition` while logged in, check Vercel logs for `[GymMaster] measurements 200:` line, then build mapping to merge GymMaster data into body-comp page.
+2. **Add Vercel env vars to Staff Hub** — `NEXT_PUBLIC_MEMBERS_AREA_SUPABASE_URL` and `NEXT_PUBLIC_MEMBERS_AREA_SUPABASE_ANON_KEY` so `MemberMessagesWidget` works in production.
+3. **Persist goals to database** — currently only in `useState`, lost on refresh. Needs a `member_goals` Supabase table + API routes.
+4. **Staff Hub display of member events** — coaches can't yet see Event Planner entries.
+5. **Commitment Club page (live data)** — `/commitment-club` route still exists with hardcoded leaderboard. Either remove or wire up `getAllMemberVisitsThisMonth()`.
+6. **Delete/edit scan or strength result** — no edit/delete UI yet for either members or coaches.
+7. **Mobile review** — app is responsive but hasn't had a dedicated mobile pass.
 
 ---
 
@@ -183,9 +244,29 @@ src/
     layout/
       MemberSidebar.tsx           — no Commitment Club in nav
       NotificationBell.tsx        — dropdown, seed data only
+    api/
+      auth/login/route.ts
+      challenges/signup/route.ts
+      challenges/[id]/measurements/route.ts
+      nominations/route.ts
+      member-events/route.ts
+      member-events/[id]/route.ts
+      inbody/route.ts             — GET (recent scans for coach table) / POST (coach entry)
+      inbody/member/route.ts      — POST (member self-entry, auth via cookie)
+      strength/route.ts           — POST (member self-entry, auth via cookie)
+      coach/strength/route.ts     — GET (recent 50 results) / POST (coach entry with member_name)
+      gymmaster/members/route.ts  — GET active members list for coach dropdowns
+    coach/(portal)/
+      input/inbody/page.tsx       — coach InBody entry form + recent scans table
+      input/strength/page.tsx     — coach S&C entry form + recent results table
+  components/
+    results/
+      BodyCompositionChart.tsx    — interactive SVG dual-metric line chart (client)
+      AddScanForm.tsx             — member self-entry form for body comp scans (client)
+      StrengthClient.tsx          — 10 exercise cards with inline add-result forms (client)
   lib/
-    gymmaster.ts                  — getAnnualVisits(), getMonthlyVisits(), loginMember()
-    staffhub.ts                   — all Staff Hub fetch helpers + types
+    gymmaster.ts                  — getAnnualVisits(), getMonthlyVisits(), loginMember(), getMemberMeasurements()
+    staffhub.ts                   — all Staff Hub fetch helpers + types (incl. fetchMemberScans, fetchMemberStrengthResults)
 ```
 
 ---
