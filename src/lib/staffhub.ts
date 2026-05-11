@@ -49,7 +49,7 @@ export type StaffHubChallenge = {
 export type StaffHubAward = {
   id: string
   month: string           // ISO date string, first of month e.g. '2026-04-01'
-  award_type: 'athlete_of_month' | 'commitment_club'
+  award_type: 'athlete_of_month' | 'commitment_club' | 'achievement'
   member_name: string
   reason: string | null
   created_at: string

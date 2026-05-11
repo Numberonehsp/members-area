@@ -9,7 +9,6 @@ async function getMessages(memberId: string): Promise<Message[]> {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   )
 
-  // Find thread for this member
   const { data: thread } = await supabase
     .from('message_threads')
     .select('id')
@@ -29,6 +28,14 @@ async function getMessages(memberId: string): Promise<Message[]> {
     return []
   }
 
+  // Mark unread coach messages as read now that the member is viewing the thread
+  await supabase
+    .from('messages')
+    .update({ is_read: true })
+    .eq('thread_id', thread.id)
+    .eq('sender_role', 'coach')
+    .eq('is_read', false)
+
   return data ?? []
 }
 
@@ -40,7 +47,6 @@ export default async function MemberMessagesPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)] max-w-2xl">
-      {/* Header */}
       <div className="mb-4 shrink-0">
         <p className="text-[11px] tracking-[0.3em] uppercase text-brand mb-1">Direct</p>
         <h1 className="font-display text-4xl text-text-primary leading-none">
@@ -49,7 +55,6 @@ export default async function MemberMessagesPage() {
         <p className="text-text-secondary text-xs mt-1">Your conversation with the Number One HSP coaching team</p>
       </div>
 
-      {/* Thread */}
       <div className="flex-1 bg-bg-card border border-border-light rounded-2xl overflow-hidden min-h-0">
         <MessageThread
           messages={messages}

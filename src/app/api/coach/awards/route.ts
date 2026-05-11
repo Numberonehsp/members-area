@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const VALID_TYPES = ['athlete_of_month', 'commitment_club']
+  const VALID_TYPES = ['athlete_of_month', 'commitment_club', 'achievement']
   if (!VALID_TYPES.includes(award_type)) {
     return NextResponse.json({ error: `award_type must be one of: ${VALID_TYPES.join(', ')}` }, { status: 400 })
   }

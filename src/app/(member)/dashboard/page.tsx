@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import AnnouncementBanner from "@/components/dashboard/AnnouncementBanner";
+import MessageNotification from "@/components/dashboard/MessageNotification";
 import WelcomeBanner from "@/components/dashboard/WelcomeBanner";
 import QuickStats from "@/components/dashboard/QuickStats";
 import AttendanceStreak from "@/components/dashboard/AttendanceStreak";
@@ -7,6 +8,7 @@ import ChallengesPreview from "@/components/dashboard/ChallengesPreview";
 import AwardsPreview from "@/components/dashboard/AwardsPreview";
 import GymEvents from "@/components/dashboard/GymEvents";
 import ContinueLearning from "@/components/education/ContinueLearning";
+import CoachTasksPreview from "@/components/dashboard/CoachTasksPreview";
 import { SEED_PATHWAYS, SEED_MODULES } from "@/lib/education-seed";
 import { fetchAnnouncements } from "@/lib/staffhub";
 import { getAnnualVisits } from "@/lib/gymmaster";
@@ -51,6 +53,9 @@ export default async function DashboardPage() {
       {/* Announcements — live from Staff Hub */}
       <AnnouncementBanner announcement={latestAnnouncement} />
 
+      {/* Coach message notification — shown when there are unread messages */}
+      <MessageNotification gymMasterId={gymMasterId} />
+
       {/* Quick Stats — live InBody data + visits */}
       <QuickStats gymMasterId={gymMasterId} visitsThisMonth={visitsThisMonth} />
 
@@ -81,6 +86,9 @@ export default async function DashboardPage() {
 
         {/* Latest Awards */}
         <AwardsPreview />
+
+        {/* Coach-assigned tasks */}
+        <CoachTasksPreview />
 
       </div>
     </div>

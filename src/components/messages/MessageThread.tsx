@@ -14,8 +14,9 @@ export type Message = {
 type Props = {
   messages: Message[]
   viewerRole: 'member' | 'coach'
-  threadId?: string
   memberName?: string
+  // Required when viewerRole === 'coach' so the API knows which thread to post to
+  gymmaster_member_id?: string
 }
 
 function formatTime(iso: string) {
@@ -26,11 +27,15 @@ function formatTime(iso: string) {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 }
 
-export default function MessageThread({ messages: initialMessages, viewerRole, memberName }: Props) {
+export default function MessageThread({ messages: initialMessages, viewerRole, memberName, gymmaster_member_id }: Props) {
   const [messages, setMessages] = useState<Message[]>(initialMessages)
   const [body, setBody] = useState('')
   const [sending, setSending] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    setMessages(initialMessages)
+  }, [initialMessages])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -42,7 +47,6 @@ export default function MessageThread({ messages: initialMessages, viewerRole, m
 
     const text = body.trim()
 
-    // Optimistic update
     const optimistic: Message = {
       id: `temp-${Date.now()}`,
       sender_role: viewerRole,
@@ -54,18 +58,25 @@ export default function MessageThread({ messages: initialMessages, viewerRole, m
     setMessages(m => [...m, optimistic])
     setBody('')
 
-    const res = await fetch('/api/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ body: text, sender_role: viewerRole }),
-    })
+    let res: Response
+    if (viewerRole === 'coach') {
+      res = await fetch('/api/coach/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gymmaster_member_id, body: text }),
+      })
+    } else {
+      res = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ body: text, sender_role: 'member' }),
+      })
+    }
 
     if (res.ok) {
       const { message } = await res.json()
-      // Replace optimistic message with the saved one (has real id and created_at)
       setMessages(m => m.map(msg => msg.id === optimistic.id ? message : msg))
     } else {
-      // Roll back on failure
       setMessages(m => m.filter(msg => msg.id !== optimistic.id))
       setBody(text)
     }
@@ -82,7 +93,6 @@ export default function MessageThread({ messages: initialMessages, viewerRole, m
 
   return (
     <div className="flex flex-col h-full">
-      {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-text-secondary text-sm gap-2">
@@ -113,7 +123,6 @@ export default function MessageThread({ messages: initialMessages, viewerRole, m
         <div ref={bottomRef} />
       </div>
 
-      {/* Composer */}
       <div className="border-t border-border-light p-3 flex gap-2 items-end">
         <textarea
           value={body}

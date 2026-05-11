@@ -17,8 +17,9 @@ type Challenge = {
 };
 
 const AWARD_TILES: { type: AwardType; emoji: string; label: string; apiType: string }[] = [
-  { type: "athlete",    emoji: "🏆", label: "Athlete of the Month", apiType: "athlete_of_month" },
-  { type: "commitment", emoji: "🔥", label: "Commitment Club",       apiType: "commitment_club"  },
+  { type: "athlete",     emoji: "🏆", label: "Athlete of the Month", apiType: "athlete_of_month" },
+  { type: "commitment",  emoji: "🔥", label: "Commitment Club",      apiType: "commitment_club"  },
+  { type: "achievement", emoji: "⭐", label: "Achievement",          apiType: "achievement"      },
 ];
 
 const MONTHS = Array.from({ length: 6 }, (_, i) => {

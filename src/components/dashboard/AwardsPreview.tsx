@@ -22,6 +22,13 @@ const AWARD_CONFIG: Record<StaffHubAward['award_type'], {
     bg: 'bg-brand/10',
     border: 'border-brand/20',
   },
+  achievement: {
+    emoji: '⭐',
+    label: 'Achievement',
+    colour: 'text-purple-400',
+    bg: 'bg-purple-400/10',
+    border: 'border-purple-400/20',
+  },
 }
 
 function formatMonth(dateStr: string): string {
