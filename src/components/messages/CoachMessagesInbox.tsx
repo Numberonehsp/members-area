@@ -16,6 +16,11 @@ type Thread = {
 
 type BroadcastState = 'idle' | 'sending' | 'done' | 'error'
 
+type GymMasterMember = {
+  id: string
+  name: string
+}
+
 function formatTime(iso: string | null) {
   if (!iso) return ''
   const d = new Date(iso)
@@ -37,6 +42,15 @@ export default function CoachMessagesInbox() {
   const [broadcastBody, setBroadcastBody] = useState('')
   const [broadcastState, setBroadcastState] = useState<BroadcastState>('idle')
   const [broadcastResult, setBroadcastResult] = useState<string>('')
+
+  // New message modal state
+  const [showNewMessage, setShowNewMessage] = useState(false)
+  const [allMembers, setAllMembers] = useState<GymMasterMember[]>([])
+  const [memberSearch, setMemberSearch] = useState('')
+  const [loadingMembers, setLoadingMembers] = useState(false)
+  const [selectedMember, setSelectedMember] = useState<GymMasterMember | null>(null)
+  const [newMessageBody, setNewMessageBody] = useState('')
+  const [sendingNew, setSendingNew] = useState(false)
 
   const loadThreads = useCallback(async () => {
     const res = await fetch('/api/coach/messages')
@@ -96,6 +110,57 @@ export default function CoachMessagesInbox() {
     }
   }
 
+  async function openNewMessageModal() {
+    setShowNewMessage(true)
+    setSelectedMember(null)
+    setNewMessageBody('')
+    setMemberSearch('')
+    if (allMembers.length === 0) {
+      setLoadingMembers(true)
+      const res = await fetch('/api/gymmaster/members')
+      if (res.ok) {
+        const { members } = await res.json()
+        setAllMembers(members ?? [])
+      }
+      setLoadingMembers(false)
+    }
+  }
+
+  async function handleSendNew() {
+    if (!selectedMember || !newMessageBody.trim()) return
+    setSendingNew(true)
+
+    const res = await fetch('/api/coach/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        gymmaster_member_id: selectedMember.id,
+        body: newMessageBody.trim(),
+        member_name: selectedMember.name,
+      }),
+    })
+
+    if (res.ok) {
+      const { thread_id } = await res.json()
+      setShowNewMessage(false)
+      setNewMessageBody('')
+      setSelectedMember(null)
+      await loadThreads()
+      // Open the thread we just created/messaged
+      const freshRes = await fetch(`/api/coach/messages/${thread_id}`)
+      if (freshRes.ok) {
+        const { messages } = await freshRes.json()
+        setThreadMessages(messages ?? [])
+        setActiveThreadId(thread_id)
+      }
+    }
+    setSendingNew(false)
+  }
+
+  const filteredMembers = allMembers.filter(m =>
+    m.name.toLowerCase().includes(memberSearch.toLowerCase())
+  )
+
   const activeThread = threads.find(t => t.id === activeThreadId)
   const totalUnread = threads.reduce((sum, t) => sum + t.unread_count, 0)
 
@@ -114,12 +179,20 @@ export default function CoachMessagesInbox() {
             </span>
           )}
         </div>
-        <button
-          onClick={() => setShowBroadcast(true)}
-          className="px-4 py-2 rounded-xl bg-brand text-white text-sm font-medium hover:bg-brand-dark transition-colors"
-        >
-          Broadcast
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={openNewMessageModal}
+            className="px-4 py-2 rounded-xl bg-brand text-white text-sm font-medium hover:bg-brand-dark transition-colors"
+          >
+            + New Message
+          </button>
+          <button
+            onClick={() => setShowBroadcast(true)}
+            className="px-4 py-2 rounded-xl border border-border-light text-text-secondary text-sm font-medium hover:border-brand/40 hover:text-text-primary transition-colors"
+          >
+            Broadcast
+          </button>
+        </div>
       </div>
 
       {/* Broadcast panel */}
@@ -159,6 +232,83 @@ export default function CoachMessagesInbox() {
                 {broadcastResult}
               </p>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* New message modal */}
+      {showNewMessage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-bg-card border border-border-light rounded-2xl w-full max-w-md shadow-xl">
+            <div className="p-5 border-b border-border-light flex items-center justify-between">
+              <h3 className="font-semibold text-text-primary text-sm">New Message</h3>
+              <button
+                onClick={() => setShowNewMessage(false)}
+                className="text-text-secondary hover:text-text-primary text-xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              {!selectedMember ? (
+                <>
+                  <p className="text-xs text-text-secondary">Select a member to message</p>
+                  <input
+                    type="text"
+                    value={memberSearch}
+                    onChange={e => setMemberSearch(e.target.value)}
+                    placeholder="Search members…"
+                    autoFocus
+                    className="w-full bg-bg-main border border-border-light rounded-xl px-3 py-2.5 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:border-brand/50"
+                  />
+                  <div className="max-h-60 overflow-y-auto divide-y divide-border-light border border-border-light rounded-xl">
+                    {loadingMembers ? (
+                      <p className="p-4 text-sm text-text-secondary text-center">Loading members…</p>
+                    ) : filteredMembers.length === 0 ? (
+                      <p className="p-4 text-sm text-text-secondary text-center">No members found</p>
+                    ) : filteredMembers.map(m => (
+                      <button
+                        key={m.id}
+                        onClick={() => setSelectedMember(m)}
+                        className="w-full text-left px-4 py-3 text-sm text-text-primary hover:bg-bg-main transition-colors"
+                      >
+                        {m.name}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-text-secondary">To</p>
+                      <p className="text-sm font-semibold text-text-primary">{selectedMember.name}</p>
+                    </div>
+                    <button
+                      onClick={() => setSelectedMember(null)}
+                      className="text-xs text-brand hover:underline"
+                    >
+                      Change
+                    </button>
+                  </div>
+                  <textarea
+                    value={newMessageBody}
+                    onChange={e => setNewMessageBody(e.target.value)}
+                    rows={4}
+                    placeholder="Write your message…"
+                    autoFocus
+                    className="w-full bg-bg-main border border-border-light rounded-xl px-3 py-2.5 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:border-brand/50 resize-none"
+                  />
+                  <button
+                    onClick={handleSendNew}
+                    disabled={!newMessageBody.trim() || sendingNew}
+                    className="w-full py-2.5 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {sendingNew ? 'Sending…' : 'Send Message'}
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}

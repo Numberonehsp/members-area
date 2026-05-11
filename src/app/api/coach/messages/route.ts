@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+export const dynamic = 'force-dynamic'
+
 function db() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -78,6 +80,7 @@ export async function POST(request: NextRequest) {
 
   const supabase = db()
   const senderName = coach_name?.trim() || 'Coach'
+  const memberName = body.member_name?.trim() || null
 
   // Get or create thread
   let threadId: string
@@ -92,7 +95,7 @@ export async function POST(request: NextRequest) {
   } else {
     const { data: created, error: createErr } = await supabase
       .from('message_threads')
-      .insert({ gymmaster_member_id })
+      .insert({ gymmaster_member_id, member_name: memberName })
       .select('id')
       .single()
 
