@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import type { Pathway, Module, Resource, Category } from '@/types/education'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -48,6 +48,85 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
         }`}
       />
     </button>
+  )
+}
+
+// ─── PDF Uploader ─────────────────────────────────────────────────────────────
+
+function PdfUploader({ value, onChange }: { value: string; onChange: (url: string) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleFile(file: File) {
+    setError(null)
+    setUploading(true)
+    const form = new FormData()
+    form.append('file', file)
+    const res = await fetch('/api/coach/content/upload-pdf', { method: 'POST', body: form })
+    const json = await res.json()
+    if (res.ok) {
+      onChange(json.url)
+    } else {
+      setError(json.error ?? 'Upload failed')
+    }
+    setUploading(false)
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={value}
+          onChange={e => { onChange(e.target.value); setError(null) }}
+          className="flex-1 bg-bg-main border border-border-light rounded-xl px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:border-brand transition-colors"
+          placeholder="Paste URL or upload a file →"
+        />
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={uploading}
+          className="shrink-0 px-3 py-2.5 rounded-xl border border-border-light text-sm text-text-secondary hover:border-brand/40 hover:text-brand transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+        >
+          {uploading ? (
+            <span className="animate-pulse">Uploading…</span>
+          ) : (
+            <>
+              <span>📄</span>
+              <span>Upload PDF</span>
+            </>
+          )}
+        </button>
+        <input
+          ref={inputRef}
+          type="file"
+          accept="application/pdf"
+          className="hidden"
+          onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = '' }}
+        />
+      </div>
+      {error && <p className="text-xs text-red-500">{error}</p>}
+      {value && !uploading && (
+        <div className="flex items-center gap-2">
+          <a
+            href={value}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-brand hover:underline truncate flex-1"
+          >
+            ✓ {value.split('/').pop()}
+          </a>
+          <button
+            type="button"
+            onClick={() => onChange('')}
+            className="text-xs text-text-secondary hover:text-red-400 transition-colors shrink-0"
+          >
+            Remove
+          </button>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -490,14 +569,11 @@ export default function ContentManager({ pathways: initPathways, modules: initMo
               </div>
               <div>
                 <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider block mb-1.5">
-                  PDF URL <span className="normal-case font-normal">(optional)</span>
+                  PDF <span className="normal-case font-normal">(optional)</span>
                 </label>
-                <input
-                  type="text"
+                <PdfUploader
                   value={draftModule.pdf_url ?? ''}
-                  onChange={e => setDraftModule(d => ({ ...d, pdf_url: e.target.value || null }))}
-                  className="w-full bg-bg-main border border-border-light rounded-xl px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:border-brand transition-colors"
-                  placeholder="/resources/guide.pdf"
+                  onChange={url => setDraftModule(d => ({ ...d, pdf_url: url || null }))}
                 />
               </div>
               <div>
@@ -602,14 +678,23 @@ export default function ContentManager({ pathways: initPathways, modules: initMo
                 </div>
               </div>
               <div>
-                <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider block mb-1.5">URL</label>
-                <input
-                  type="url"
-                  value={draftResource.url ?? ''}
-                  onChange={e => setDraftResource(d => ({ ...d, url: e.target.value }))}
-                  className="w-full bg-bg-main border border-border-light rounded-xl px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:border-brand transition-colors"
-                  placeholder="https://..."
-                />
+                <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider block mb-1.5">
+                  {draftResource.resource_type === 'pdf' ? 'PDF' : 'URL'}
+                </label>
+                {draftResource.resource_type === 'pdf' ? (
+                  <PdfUploader
+                    value={draftResource.url ?? ''}
+                    onChange={url => setDraftResource(d => ({ ...d, url }))}
+                  />
+                ) : (
+                  <input
+                    type="url"
+                    value={draftResource.url ?? ''}
+                    onChange={e => setDraftResource(d => ({ ...d, url: e.target.value }))}
+                    className="w-full bg-bg-main border border-border-light rounded-xl px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:border-brand transition-colors"
+                    placeholder="https://..."
+                  />
+                )}
               </div>
               <div className="flex items-center justify-between pt-1">
                 <div>
