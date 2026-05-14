@@ -397,8 +397,33 @@ export type MemberEvent = {
 }
 
 /**
+ * Fetch ALL upcoming events for a single member (today onwards, no upper limit).
+ * Used by the EventPlanner on the member's Goals page so events beyond 7 days are not lost.
+ */
+export async function fetchAllMemberEvents(gymMasterId: string): Promise<MemberEvent[]> {
+  if (!STAFFHUB_URL || !STAFFHUB_ANON_KEY) return []
+  try {
+    const today = new Date().toISOString().split('T')[0]
+    const { data, error } = await staffHubReader
+      .from('member_events')
+      .select('id, gymmaster_member_id, member_name, event_name, event_date, created_at')
+      .eq('gymmaster_member_id', gymMasterId)
+      .gte('event_date', today)
+      .order('event_date', { ascending: true })
+    if (error) {
+      console.warn('[StaffHub] fetchAllMemberEvents failed:', error.message)
+      return []
+    }
+    return data ?? []
+  } catch (err) {
+    console.warn('[StaffHub] fetchAllMemberEvents threw:', err)
+    return []
+  }
+}
+
+/**
  * Fetch upcoming events for a single member in the next 7 days, ordered by event date ascending.
- * Used by the EventPlanner server component on the Goals page and the coach member detail page.
+ * Used by the coach member detail page "upcoming events" widget.
  */
 export async function fetchMemberEvents(gymMasterId: string): Promise<MemberEvent[]> {
   if (!STAFFHUB_URL || !STAFFHUB_ANON_KEY) return []

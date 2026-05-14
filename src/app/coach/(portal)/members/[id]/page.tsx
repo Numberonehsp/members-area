@@ -1,5 +1,5 @@
 import { getAllMembers } from '@/lib/gymmaster'
-import { fetchMemberScans, fetchMemberStrengthResults, fetchMemberEvents } from '@/lib/staffhub'
+import { fetchMemberScans, fetchMemberStrengthResults, fetchAllMemberEvents } from '@/lib/staffhub'
 import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
 import CoachMemberTasks from '@/components/coach/CoachMemberTasks'
@@ -75,7 +75,7 @@ export default async function CoachMemberDetailPage({
     fetchMemberStrengthResults(id),
     getMemberGoals(id),
     getMemberVisitCache(id),
-    fetchMemberEvents(id),
+    fetchAllMemberEvents(id),
     getMemberTasks(id),
   ])
 
@@ -301,12 +301,12 @@ export default async function CoachMemberDetailPage({
             )}
           </div>
 
-          {/* Upcoming Events (next 7 days) */}
+          {/* Upcoming Events */}
           <div className="bg-bg-card border border-border-light rounded-2xl p-5 shadow-sm relative overflow-hidden">
             <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-brand via-brand-light to-transparent" />
-            <h2 className="font-semibold text-text-primary text-sm mb-3">🗓️ Upcoming Events <span className="text-[10px] font-normal text-text-secondary">(next 7 days)</span></h2>
+            <h2 className="font-semibold text-text-primary text-sm mb-3">🗓️ Upcoming Events</h2>
             {memberEvents.length === 0 ? (
-              <p className="text-sm text-text-secondary">No upcoming events in the next 7 days.</p>
+              <p className="text-sm text-text-secondary">No upcoming events.</p>
             ) : (
               <div className="space-y-2">
                 {memberEvents.map((e) => (
