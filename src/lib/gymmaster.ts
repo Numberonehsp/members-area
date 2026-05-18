@@ -411,6 +411,47 @@ export async function getAllMemberVisitsThisMonth(): Promise<
   }))
 }
 
+// ── Member access tier ────────────────────────────────────────────────────────
+
+const FULL_ACCESS_MEMBERSHIPS = ['Perform', 'Perform 6 Month']
+
+/**
+ * Determine whether a logged-in member has 'full' or 'standard' education access.
+ * Full access = Perform / Perform 6 Month. All other memberships = standard.
+ * Falls back to 'standard' if the GymMaster endpoint is unavailable.
+ */
+export async function getMemberAccessTier(
+  memberToken: string
+): Promise<'full' | 'standard'> {
+  if (!SITE_NAME || !MEMBER_API_KEY || !memberToken) return 'standard'
+
+  try {
+    const url = `${baseUrl()}/member/memberships?token=${encodeURIComponent(memberToken)}&api_key=${encodeURIComponent(MEMBER_API_KEY)}`
+    const res = await fetch(url, { cache: 'no-store' })
+
+    if (!res.ok) {
+      console.warn(`[GymMaster] getMemberAccessTier: ${res.status} — defaulting to standard`)
+      return 'standard'
+    }
+
+    const data: { error?: string | null; result?: unknown } = await res.json()
+    console.log('[GymMaster] member/memberships result:', JSON.stringify(data.result).slice(0, 500))
+
+    if (data.error || !data.result) return 'standard'
+
+    const list = Array.isArray(data.result) ? data.result : [data.result]
+    const isFullAccess = list.some((m: Record<string, unknown>) => {
+      const name = String(m.membershipname ?? m.name ?? m.membership_name ?? '')
+      return FULL_ACCESS_MEMBERSHIPS.some(f => name.toLowerCase().includes(f.toLowerCase()))
+    })
+
+    return isFullAccess ? 'full' : 'standard'
+  } catch (err) {
+    console.warn('[GymMaster] getMemberAccessTier: fetch threw —', err)
+    return 'standard'
+  }
+}
+
 // ── Body measurements ─────────────────────────────────────────────────────────
 
 export type GymMasterMeasurement = {

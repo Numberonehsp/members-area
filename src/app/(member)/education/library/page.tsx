@@ -1,13 +1,12 @@
 import Link from 'next/link'
+import { cookies } from 'next/headers'
 import LibraryGrid from '@/components/education/LibraryGrid'
 import { SEED_RESOURCES } from '@/lib/education-seed'
 
-// TODO: replace with Supabase query
-// const { data: resources } = await supabase
-//   .from('education_resources').select('*')
-//   .eq('is_published', true).order('created_at', { ascending: false })
+export default async function OpenLibraryPage() {
+  const cookieStore = await cookies()
+  const memberTier = (cookieStore.get('gymmaster_access_tier')?.value ?? 'standard') as 'full' | 'standard'
 
-export default function OpenLibraryPage() {
   return (
     <div>
       {/* Breadcrumb */}
@@ -27,7 +26,7 @@ export default function OpenLibraryPage() {
         </p>
       </div>
 
-      <LibraryGrid resources={SEED_RESOURCES} />
+      <LibraryGrid resources={SEED_RESOURCES} memberTier={memberTier} />
     </div>
   )
 }

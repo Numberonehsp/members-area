@@ -20,9 +20,9 @@ const TYPE_TABS = [
   { id: 'link',    label: 'Link' },
 ]
 
-type Props = { resources: Resource[] }
+type Props = { resources: Resource[]; memberTier: 'full' | 'standard' }
 
-export default function LibraryGrid({ resources }: Props) {
+export default function LibraryGrid({ resources, memberTier }: Props) {
   const [category, setCategory] = useState('all')
   const [type, setType] = useState('all')
 
@@ -76,7 +76,7 @@ export default function LibraryGrid({ resources }: Props) {
       {filtered.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {filtered.map(r => (
-            <ResourceCard key={r.id} resource={r} />
+            <ResourceCard key={r.id} resource={r} memberTier={memberTier} />
           ))}
         </div>
       ) : (

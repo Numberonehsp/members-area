@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { cookies } from 'next/headers'
 import { SEED_PATHWAYS, SEED_MODULES, getPathwayProgress } from '@/lib/education-seed'
 import { notFound } from 'next/navigation'
 
@@ -16,6 +17,9 @@ export default async function PathwayDetailPage({
   params,
 }: PageProps<'/education/pathway/[id]'>) {
   const { id } = await params
+
+  const cookieStore = await cookies()
+  const memberTier = (cookieStore.get('gymmaster_access_tier')?.value ?? 'standard') as 'full' | 'standard'
 
   // TODO: replace with Supabase query
   const pathway = SEED_PATHWAYS.find(p => p.id === id)
@@ -79,20 +83,35 @@ export default async function PathwayDetailPage({
         </div>
       </div>
 
+      {/* Membership notice for standard-tier members */}
+      {memberTier === 'standard' && (
+        <div className="bg-status-amber/10 border border-status-amber/30 rounded-xl p-4 mb-6 flex items-start gap-3">
+          <span className="text-xl mt-0.5">⭐</span>
+          <div>
+            <p className="text-sm font-semibold text-text-primary mb-0.5">First module free</p>
+            <p className="text-xs text-text-secondary leading-relaxed">
+              Module 1 of every pathway is included with your membership. Upgrade to{' '}
+              <strong>Perform</strong> to unlock all modules and the full resource library.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Module list */}
       <div className="space-y-2">
         {modules
           .sort((a, b) => a.module_order - b.module_order)
           .map((module, idx) => {
-            const isLocked = module.is_locked
+            const membershipLocked = memberTier === 'standard' && module.module_order > 1
+            const isLocked = membershipLocked || module.is_locked
             const status = isLocked ? 'not_started' : (module.progress_status ?? 'not_started')
             const cfg = STATUS_CONFIG[status]
 
             return (
               <div key={module.id}>
                 {isLocked ? (
-                  <div className="bg-bg-card border border-border-light rounded-xl p-4 opacity-50 cursor-not-allowed">
-                    <ModuleRow module={module} idx={idx} cfg={cfg} locked />
+                  <div className={`bg-bg-card border border-border-light rounded-xl p-4 cursor-not-allowed ${membershipLocked ? 'opacity-60' : 'opacity-50'}`}>
+                    <ModuleRow module={module} idx={idx} cfg={cfg} locked membershipLocked={membershipLocked} />
                   </div>
                 ) : (
                   <Link href={`/education/module/${module.id}`} className="group block">
@@ -103,7 +122,7 @@ export default async function PathwayDetailPage({
                         ? 'border-blue-500/20 hover:border-blue-500/40'
                         : 'border-border-light hover:border-brand/30 hover:shadow-sm'
                     }`}>
-                      <ModuleRow module={module} idx={idx} cfg={cfg} locked={false} />
+                      <ModuleRow module={module} idx={idx} cfg={cfg} locked={false} membershipLocked={false} />
                     </div>
                   </Link>
                 )}
@@ -116,18 +135,19 @@ export default async function PathwayDetailPage({
 }
 
 function ModuleRow({
-  module, idx, cfg, locked
+  module, idx, cfg, locked, membershipLocked
 }: {
   module: { title: string; description: string | null; duration_minutes: number | null; pdf_url: string | null }
   idx: number
   cfg: { icon: string; colour: string; bg: string; border: string }
   locked: boolean
+  membershipLocked: boolean
 }) {
   return (
     <div className="flex items-start gap-4">
       {/* Status orb */}
       <div className={`w-8 h-8 rounded-full border flex items-center justify-center text-sm font-bold shrink-0 mt-0.5 ${cfg.bg} ${cfg.border} ${cfg.colour}`}>
-        {locked ? '🔒' : cfg.icon}
+        {membershipLocked ? '⭐' : locked ? '🔒' : cfg.icon}
       </div>
 
       <div className="flex-1 min-w-0">
@@ -146,6 +166,11 @@ function ModuleRow({
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            {membershipLocked && (
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-status-amber/10 text-status-amber border-status-amber/30">
+                Perform+
+              </span>
+            )}
             {module.pdf_url && (
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-status-red/10 text-status-red border border-status-red/20">
                 PDF

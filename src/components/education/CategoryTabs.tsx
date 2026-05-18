@@ -16,9 +16,10 @@ const TABS = [
 type Props = {
   pathways: Pathway[]
   resources: Resource[]
+  memberTier: 'full' | 'standard'
 }
 
-export default function CategoryTabs({ pathways, resources }: Props) {
+export default function CategoryTabs({ pathways, resources, memberTier }: Props) {
   const [active, setActive] = useState<string>('all')
 
   const filteredPathways = active === 'all'
@@ -62,7 +63,7 @@ export default function CategoryTabs({ pathways, resources }: Props) {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {filteredPathways.map(p => (
-              <PathwayCard key={p.id} pathway={p} />
+              <PathwayCard key={p.id} pathway={p} memberTier={memberTier} />
             ))}
           </div>
         </section>
@@ -84,7 +85,7 @@ export default function CategoryTabs({ pathways, resources }: Props) {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {filteredResources.slice(0, 6).map(r => (
-              <ResourceCard key={r.id} resource={r} />
+              <ResourceCard key={r.id} resource={r} memberTier={memberTier} />
             ))}
           </div>
         </section>

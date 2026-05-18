@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { loginMember, getMemberProfile, getAnnualVisits } from '@/lib/gymmaster'
+import { loginMember, getMemberProfile, getAnnualVisits, getMemberAccessTier } from '@/lib/gymmaster'
 import { createClient } from '@supabase/supabase-js'
 
 async function updateVisitCache(
@@ -59,7 +59,10 @@ export async function POST(req: NextRequest) {
 
   // Try to fetch the member's profile so we can greet them by name on the dashboard.
   // If this fails we still log the user in — name just falls back to "there".
-  const profile = await getMemberProfile(result.token)
+  const [profile, accessTier] = await Promise.all([
+    getMemberProfile(result.token),
+    getMemberAccessTier(result.token),
+  ])
 
   const response = NextResponse.json({ memberId: result.memberid }, { status: 200 })
 
@@ -100,6 +103,15 @@ export async function POST(req: NextRequest) {
       maxAge: 60 * 60 * 24,
     })
   }
+
+  // Education access tier — 'full' for Perform members, 'standard' for all others
+  response.cookies.set('gymmaster_access_tier', accessTier, {
+    httpOnly: false,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 60 * 60 * 24,
+  })
 
   // Fire-and-forget: cache this member's visit data for the coach portal
   const memberName = [profile?.firstName, profile?.lastName].filter(Boolean).join(' ') || 'Member'

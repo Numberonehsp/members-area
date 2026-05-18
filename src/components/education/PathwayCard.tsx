@@ -15,9 +15,10 @@ const CATEGORY_ICONS: Record<string, string> = {
   mindset:   '🧠',
 }
 
-type Props = { pathway: Pathway }
+type Props = { pathway: Pathway; memberTier: 'full' | 'standard' }
 
-export default function PathwayCard({ pathway }: Props) {
+export default function PathwayCard({ pathway, memberTier }: Props) {
+  const isRestricted = memberTier === 'standard'
   const pct = pathway.module_count
     ? Math.round(((pathway.completed_count ?? 0) / pathway.module_count) * 100)
     : 0
@@ -30,7 +31,7 @@ export default function PathwayCard({ pathway }: Props) {
         {/* Thumbnail / category banner */}
         <div className="h-28 bg-gradient-to-br from-bg-sidebar to-brand/20 flex items-center justify-center relative overflow-hidden">
           <span className="text-5xl">{CATEGORY_ICONS[pathway.category]}</span>
-          <div className="absolute top-3 left-3 flex gap-2">
+          <div className="absolute top-3 left-3 flex gap-2 flex-wrap">
             <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${colourCls}`}>
               {pathway.category.charAt(0).toUpperCase() + pathway.category.slice(1)}
             </span>
@@ -38,6 +39,13 @@ export default function PathwayCard({ pathway }: Props) {
               {pathway.is_sequential ? '🔒 Sequential' : '🔓 Open'}
             </span>
           </div>
+          {isRestricted && (
+            <div className="absolute top-3 right-3">
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-status-amber/20 text-status-amber border-status-amber/40">
+                ⭐ Perform+
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="p-5">

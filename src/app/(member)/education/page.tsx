@@ -1,9 +1,13 @@
+import { cookies } from 'next/headers'
 import CategoryTabs from '@/components/education/CategoryTabs'
 import ContinueLearning from '@/components/education/ContinueLearning'
 import { SEED_MODULES } from '@/lib/education-seed'
 import { getContentWithOverrides } from '@/lib/content'
 
 export default async function EducationHubPage() {
+  const cookieStore = await cookies()
+  const memberTier = (cookieStore.get('gymmaster_access_tier')?.value ?? 'standard') as 'full' | 'standard'
+
   const { pathways, resources } = await getContentWithOverrides()
   const publishedPathways = pathways.filter(p => p.is_published !== false)
 
@@ -35,7 +39,7 @@ export default async function EducationHubPage() {
         </div>
       )}
 
-      <CategoryTabs pathways={publishedPathways} resources={resources.filter(r => r.is_published !== false)} />
+      <CategoryTabs pathways={publishedPathways} resources={resources.filter(r => r.is_published !== false)} memberTier={memberTier} />
     </div>
   )
 }
