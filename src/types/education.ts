@@ -6,6 +6,10 @@ export type Category = 'nutrition' | 'training' | 'recovery' | 'mindset'
 export type ProgressStatus = 'not_started' | 'in_progress' | 'completed'
 export type ResourceType = 'video' | 'pdf' | 'article' | 'link'
 
+// Which membership plan is required to access this content.
+// null / undefined = free to all logged-in members.
+export type EducationPlan = 'foundations' | 'gym-only' | 'sweat' | 'perform' | 'nutrition'
+
 export type Pathway = {
   id: string
   title: string
@@ -16,6 +20,7 @@ export type Pathway = {
   thumbnail_url: string | null
   is_published: boolean
   created_at: string
+  required_plan?: EducationPlan | null
   // Computed / joined fields
   module_count?: number
   total_duration_minutes?: number
@@ -58,6 +63,7 @@ export type Resource = {
   thumbnail_url: string | null
   is_published: boolean
   created_at: string
+  required_plan?: EducationPlan | null
 }
 
 export type QuizQuestion = {

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import PathwayCard from './PathwayCard'
 import ResourceCard from './ResourceCard'
 import type { Pathway, Resource, Category } from '@/types/education'
+import { parseMemberPlans, canAccess } from '@/lib/education-access'
 
 const TABS = [
   { id: 'all',       label: 'All',       icon: '✦' },
@@ -16,22 +17,56 @@ const TABS = [
 type Props = {
   pathways: Pathway[]
   resources: Resource[]
-  memberTier: 'full' | 'standard'
+  memberPlans: string[]       // serialisable array from server; converted to Set inside
+  foundationsResources?: Resource[]
 }
 
-export default function CategoryTabs({ pathways, resources, memberTier }: Props) {
+export default function CategoryTabs({ pathways, resources, memberPlans, foundationsResources = [] }: Props) {
   const [active, setActive] = useState<string>('all')
+  const plans = parseMemberPlans(memberPlans.join(','))
+
+  const hasFoundations = plans.has('foundations')
+
+  // Foundations content is hidden from everyone except foundations members,
+  // so exclude it from the main pathway/resource lists entirely.
+  const visiblePathways = pathways.filter(p => canAccess(p.required_plan, plans) !== 'hidden')
+  const visibleResources = resources.filter(r => canAccess(r.required_plan, plans) !== 'hidden')
 
   const filteredPathways = active === 'all'
-    ? pathways
-    : pathways.filter(p => p.category === active)
+    ? visiblePathways
+    : visiblePathways.filter(p => p.category === active)
 
   const filteredResources = active === 'all'
-    ? resources
-    : resources.filter(r => r.category === active)
+    ? visibleResources
+    : visibleResources.filter(r => r.category === active as Category)
 
   return (
     <div>
+      {/* Foundations section — only shown to foundations members */}
+      {hasFoundations && foundationsResources.length > 0 && (
+        <section className="mb-10">
+          <div className="bg-bg-card border border-brand/20 rounded-2xl overflow-hidden">
+            <div className="h-0.5 bg-gradient-to-r from-brand via-brand-light to-transparent" />
+            <div className="p-5 border-b border-border-light flex items-center gap-3">
+              <span className="text-2xl">🏋️</span>
+              <div>
+                <h2 className="font-display text-2xl text-text-primary leading-none">
+                  Foundations Programme
+                </h2>
+                <p className="text-xs text-text-secondary mt-0.5">
+                  Your personal 1-to-1 session support materials — sent by your coach after each session.
+                </p>
+              </div>
+            </div>
+            <div className="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {foundationsResources.map(r => (
+                <ResourceCard key={r.id} resource={r} memberPlans={memberPlans} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Tab bar */}
       <div className="flex gap-1 overflow-x-auto pb-1 mb-8 scrollbar-hide">
         {TABS.map(tab => (
@@ -63,7 +98,7 @@ export default function CategoryTabs({ pathways, resources, memberTier }: Props)
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {filteredPathways.map(p => (
-              <PathwayCard key={p.id} pathway={p} memberTier={memberTier} />
+              <PathwayCard key={p.id} pathway={p} memberPlans={memberPlans} />
             ))}
           </div>
         </section>
@@ -85,7 +120,7 @@ export default function CategoryTabs({ pathways, resources, memberTier }: Props)
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {filteredResources.slice(0, 6).map(r => (
-              <ResourceCard key={r.id} resource={r} memberTier={memberTier} />
+              <ResourceCard key={r.id} resource={r} memberPlans={memberPlans} />
             ))}
           </div>
         </section>

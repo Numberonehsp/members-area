@@ -1,4 +1,5 @@
 import type { Resource } from '@/types/education'
+import { parseMemberPlans, canAccess, upgradePlanLabel } from '@/lib/education-access'
 
 const TYPE_CONFIG: Record<string, { label: string; icon: string; colour: string }> = {
   video:   { label: 'Video',   icon: '▶', colour: 'bg-blue-500/10 text-blue-600 border-blue-500/20' },
@@ -11,16 +12,17 @@ const CATEGORY_ICONS: Record<string, string> = {
   nutrition: '🥗', training: '🏋️', recovery: '🛌', mindset: '🧠',
 }
 
-type Props = { resource: Resource; memberTier: 'full' | 'standard' }
+type Props = { resource: Resource; memberPlans: string[] }
 
-export default function ResourceCard({ resource, memberTier }: Props) {
+export default function ResourceCard({ resource, memberPlans }: Props) {
+  const plans = parseMemberPlans(memberPlans.join(','))
+  const access = canAccess(resource.required_plan, plans)
   const type = TYPE_CONFIG[resource.resource_type] ?? TYPE_CONFIG.link
   const isExternal = resource.resource_type === 'video' || resource.resource_type === 'link'
-  const isLocked = memberTier === 'standard'
 
-  if (isLocked) {
+  if (access === 'locked') {
     return (
-      <div className="relative block bg-bg-card border border-border-light rounded-xl p-4 opacity-75">
+      <div className="block bg-bg-card border border-border-light rounded-xl p-4 opacity-70">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-lg bg-bg-main border border-border-light flex items-center justify-center text-lg shrink-0 grayscale">
             {CATEGORY_ICONS[resource.category] ?? '📌'}
@@ -30,9 +32,11 @@ export default function ResourceCard({ resource, memberTier }: Props) {
               <h3 className="font-semibold text-text-secondary text-sm leading-snug line-clamp-2">
                 {resource.title}
               </h3>
-              <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-status-amber/10 text-status-amber border-status-amber/30">
-                ⭐ Perform+
-              </span>
+              {resource.required_plan && (
+                <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-status-amber/10 text-status-amber border-status-amber/30">
+                  ⭐ {upgradePlanLabel(resource.required_plan)}
+                </span>
+              )}
             </div>
             {resource.description && (
               <p className="text-text-secondary text-xs leading-relaxed line-clamp-2">
@@ -41,7 +45,11 @@ export default function ResourceCard({ resource, memberTier }: Props) {
             )}
             <p className="text-[10px] text-text-secondary mt-2 flex items-center gap-1">
               <span>🔒</span>
-              <span>Available on Perform membership</span>
+              <span>
+                {resource.required_plan
+                  ? `Available with ${upgradePlanLabel(resource.required_plan)} membership`
+                  : 'Members only'}
+              </span>
             </p>
           </div>
         </div>

@@ -3,15 +3,25 @@ import CategoryTabs from '@/components/education/CategoryTabs'
 import ContinueLearning from '@/components/education/ContinueLearning'
 import { SEED_MODULES } from '@/lib/education-seed'
 import { getContentWithOverrides } from '@/lib/content'
+import { parseMemberPlans, canAccess } from '@/lib/education-access'
 
 export default async function EducationHubPage() {
   const cookieStore = await cookies()
-  const memberTier = (cookieStore.get('gymmaster_access_tier')?.value ?? 'standard') as 'full' | 'standard'
+  const memberPlans = parseMemberPlans(cookieStore.get('gymmaster_plans')?.value)
 
   const { pathways, resources } = await getContentWithOverrides()
   const publishedPathways = pathways.filter(p => p.is_published !== false)
+  const publishedResources = resources.filter(r => r.is_published !== false)
 
-  const inProgressPathway = publishedPathways.find(p =>
+  // Foundations resources are shown in their own section, not in the main library
+  const foundationsResources = publishedResources.filter(r => r.required_plan === 'foundations')
+  const mainResources = publishedResources.filter(r => r.required_plan !== 'foundations')
+
+  // Only show "continue" for pathways the member can actually access
+  const accessiblePathways = publishedPathways.filter(
+    p => canAccess(p.required_plan, memberPlans) === 'full'
+  )
+  const inProgressPathway = accessiblePathways.find(p =>
     (p.completed_count ?? 0) > 0 && (p.completed_count ?? 0) < (p.module_count ?? 0)
   )
   const inProgressModule = inProgressPathway
@@ -39,7 +49,12 @@ export default async function EducationHubPage() {
         </div>
       )}
 
-      <CategoryTabs pathways={publishedPathways} resources={resources.filter(r => r.is_published !== false)} memberTier={memberTier} />
+      <CategoryTabs
+        pathways={publishedPathways}
+        resources={mainResources}
+        memberPlans={Array.from(memberPlans)}
+        foundationsResources={foundationsResources}
+      />
     </div>
   )
 }

@@ -19,7 +19,8 @@ export default async function PathwayDetailPage({
   const { id } = await params
 
   const cookieStore = await cookies()
-  const memberTier = (cookieStore.get('gymmaster_access_tier')?.value ?? 'standard') as 'full' | 'standard'
+  const { parseMemberPlans, canAccess } = await import('@/lib/education-access')
+  const memberPlans = parseMemberPlans(cookieStore.get('gymmaster_plans')?.value)
 
   // TODO: replace with Supabase query
   const pathway = SEED_PATHWAYS.find(p => p.id === id)
@@ -83,15 +84,14 @@ export default async function PathwayDetailPage({
         </div>
       </div>
 
-      {/* Membership notice for standard-tier members */}
-      {memberTier === 'standard' && (
+      {/* Notice when member can see this pathway but modules 2+ are locked */}
+      {pathway.required_plan && canAccess(pathway.required_plan, memberPlans) === 'locked' && (
         <div className="bg-status-amber/10 border border-status-amber/30 rounded-xl p-4 mb-6 flex items-start gap-3">
           <span className="text-xl mt-0.5">⭐</span>
           <div>
             <p className="text-sm font-semibold text-text-primary mb-0.5">First module free</p>
             <p className="text-xs text-text-secondary leading-relaxed">
-              Module 1 of every pathway is included with your membership. Upgrade to{' '}
-              <strong>Perform</strong> to unlock all modules and the full resource library.
+              Module 1 of every pathway is included with your membership. Upgrade to access the full pathway and resource library.
             </p>
           </div>
         </div>
@@ -102,7 +102,11 @@ export default async function PathwayDetailPage({
         {modules
           .sort((a, b) => a.module_order - b.module_order)
           .map((module, idx) => {
-            const membershipLocked = memberTier === 'standard' && module.module_order > 1
+            // Lock modules 2+ when the pathway itself requires a plan the member doesn't have
+            const membershipLocked =
+              !!pathway.required_plan &&
+              canAccess(pathway.required_plan, memberPlans) === 'locked' &&
+              module.module_order > 1
             const isLocked = membershipLocked || module.is_locked
             const status = isLocked ? 'not_started' : (module.progress_status ?? 'not_started')
             const cfg = STATUS_CONFIG[status]

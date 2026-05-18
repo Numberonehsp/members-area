@@ -5,7 +5,9 @@ import { SEED_RESOURCES } from '@/lib/education-seed'
 
 export default async function OpenLibraryPage() {
   const cookieStore = await cookies()
-  const memberTier = (cookieStore.get('gymmaster_access_tier')?.value ?? 'standard') as 'full' | 'standard'
+  const memberPlans = Array.from(
+    (await import('@/lib/education-access')).parseMemberPlans(cookieStore.get('gymmaster_plans')?.value)
+  )
 
   return (
     <div>
@@ -26,7 +28,7 @@ export default async function OpenLibraryPage() {
         </p>
       </div>
 
-      <LibraryGrid resources={SEED_RESOURCES} memberTier={memberTier} />
+      <LibraryGrid resources={SEED_RESOURCES.filter(r => r.required_plan !== 'foundations')} memberPlans={memberPlans} />
     </div>
   )
 }

@@ -2,6 +2,8 @@
 
 import { useState, useRef } from 'react'
 import type { Pathway, Module, Resource, Category } from '@/types/education'
+import { PLAN_OPTIONS } from '@/lib/education-access'
+import type { EducationPlan } from '@/lib/education-access'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -163,13 +165,21 @@ export default function ContentManager({ pathways: initPathways, modules: initMo
     setTimeout(() => setSavedId(null), 2000)
   }
 
-  // ── Persist publish state ──
-  function savePublish(id: string, entity_type: 'pathway' | 'module' | 'resource', is_published: boolean) {
+  // ── Persist publish state and/or required_plan ──
+  function savePublish(id: string, entity_type: 'pathway' | 'module' | 'resource', is_published: boolean, required_plan?: EducationPlan | null) {
     fetch('/api/coach/content/publish', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, entity_type, is_published }),
+      body: JSON.stringify({ id, entity_type, is_published, ...(required_plan !== undefined ? { required_plan } : {}) }),
     })
+  }
+
+  // ── Pathway plan ──
+  function setPathwayPlan(id: string, plan: EducationPlan | null) {
+    const pathway = pathways.find(p => p.id === id)!
+    setPathways(prev => prev.map(p => p.id === id ? { ...p, required_plan: plan } : p))
+    flashSaved(id)
+    savePublish(id, 'pathway', pathway.is_published, plan)
   }
 
   // ── Pathway actions ──
@@ -273,14 +283,18 @@ export default function ContentManager({ pathways: initPathways, modules: initMo
         resource_type: draftResource.resource_type ?? 'article',
         url: draftResource.url ?? '',
         thumbnail_url: null,
+        required_plan: draftResource.required_plan ?? null,
         is_published: draftResource.is_published ?? false,
         created_at: new Date().toISOString(),
       }
       setResources(prev => [...prev, newRes])
       flashSaved(newRes.id)
+      savePublish(newRes.id, 'resource', newRes.is_published, newRes.required_plan)
     } else if (resourceModal) {
-      setResources(prev => prev.map(r => r.id === resourceModal.id ? { ...r, ...draftResource } as Resource : r))
+      const updated = { ...resourceModal, ...draftResource } as Resource
+      setResources(prev => prev.map(r => r.id === resourceModal.id ? updated : r))
       flashSaved(resourceModal.id)
+      savePublish(resourceModal.id, 'resource', updated.is_published, updated.required_plan)
     }
     closeResourceModal()
   }
@@ -361,6 +375,13 @@ export default function ContentManager({ pathways: initPathways, modules: initMo
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
+                    <select
+                      value={pathway.required_plan ?? ''}
+                      onChange={e => setPathwayPlan(pathway.id, (e.target.value as EducationPlan) || null)}
+                      className="text-xs bg-bg-main border border-border-light rounded-lg px-2 py-1.5 text-text-secondary focus:outline-none focus:border-brand transition-colors"
+                    >
+                      {PLAN_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
                     <button
                       onClick={() => togglePathwayPublished(pathway.id)}
                       className="text-xs px-3 py-1.5 rounded-lg border border-border-light text-text-secondary hover:border-brand/30 hover:text-brand transition-colors"
@@ -695,6 +716,16 @@ export default function ContentManager({ pathways: initPathways, modules: initMo
                     placeholder="https://..."
                   />
                 )}
+              </div>
+              <div>
+                <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider block mb-1.5">Access</label>
+                <select
+                  value={draftResource.required_plan ?? ''}
+                  onChange={e => setDraftResource(d => ({ ...d, required_plan: (e.target.value as EducationPlan) || null }))}
+                  className="w-full bg-bg-main border border-border-light rounded-xl px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:border-brand transition-colors"
+                >
+                  {PLAN_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
               </div>
               <div className="flex items-center justify-between pt-1">
                 <div>

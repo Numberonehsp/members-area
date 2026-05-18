@@ -411,44 +411,50 @@ export async function getAllMemberVisitsThisMonth(): Promise<
   }))
 }
 
-// ── Member access tier ────────────────────────────────────────────────────────
+// ── Member education plans ────────────────────────────────────────────────────
 
-const FULL_ACCESS_MEMBERSHIPS = ['Perform', 'Perform 6 Month']
+import { MEMBERSHIP_PLAN_MAP, type EducationPlan } from './education-access'
 
 /**
- * Determine whether a logged-in member has 'full' or 'standard' education access.
- * Full access = Perform / Perform 6 Month. All other memberships = standard.
- * Falls back to 'standard' if the GymMaster endpoint is unavailable.
+ * Fetch the logged-in member's active GymMaster memberships and return the
+ * set of education plan tags they are entitled to.
+ *
+ * Calls /member/memberships with the member's own login token. Falls back
+ * to an empty array (free content only) if the endpoint is unavailable.
+ *
+ * The returned array is stored as a comma-separated cookie at login time so
+ * no repeat API calls are needed during the session.
  */
-export async function getMemberAccessTier(
-  memberToken: string
-): Promise<'full' | 'standard'> {
-  if (!SITE_NAME || !MEMBER_API_KEY || !memberToken) return 'standard'
+export async function getMemberPlans(memberToken: string): Promise<EducationPlan[]> {
+  if (!SITE_NAME || !MEMBER_API_KEY || !memberToken) return []
 
   try {
     const url = `${baseUrl()}/member/memberships?token=${encodeURIComponent(memberToken)}&api_key=${encodeURIComponent(MEMBER_API_KEY)}`
     const res = await fetch(url, { cache: 'no-store' })
 
     if (!res.ok) {
-      console.warn(`[GymMaster] getMemberAccessTier: ${res.status} — defaulting to standard`)
-      return 'standard'
+      console.warn(`[GymMaster] getMemberPlans: ${res.status} — defaulting to free`)
+      return []
     }
 
     const data: { error?: string | null; result?: unknown } = await res.json()
     console.log('[GymMaster] member/memberships result:', JSON.stringify(data.result).slice(0, 500))
 
-    if (data.error || !data.result) return 'standard'
+    if (data.error || !data.result) return []
 
     const list = Array.isArray(data.result) ? data.result : [data.result]
-    const isFullAccess = list.some((m: Record<string, unknown>) => {
-      const name = String(m.membershipname ?? m.name ?? m.membership_name ?? '')
-      return FULL_ACCESS_MEMBERSHIPS.some(f => name.toLowerCase().includes(f.toLowerCase()))
-    })
+    const plans = new Set<EducationPlan>()
 
-    return isFullAccess ? 'full' : 'standard'
+    for (const m of list as Record<string, unknown>[]) {
+      const name = String(m.membershipname ?? m.name ?? m.membership_name ?? '')
+      const mapped = MEMBERSHIP_PLAN_MAP[name]
+      if (mapped) mapped.forEach(p => plans.add(p))
+    }
+
+    return Array.from(plans)
   } catch (err) {
-    console.warn('[GymMaster] getMemberAccessTier: fetch threw —', err)
-    return 'standard'
+    console.warn('[GymMaster] getMemberPlans: fetch threw —', err)
+    return []
   }
 }
 

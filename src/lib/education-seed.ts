@@ -17,6 +17,7 @@ export const SEED_PATHWAYS: Pathway[] = [
     thumbnail_url: null,
     is_published: true,
     created_at: '2026-01-01T00:00:00Z',
+    required_plan: 'gym-only',
     module_count: 12,
     total_duration_minutes: 105,
     completed_count: 0,
@@ -31,6 +32,7 @@ export const SEED_PATHWAYS: Pathway[] = [
     thumbnail_url: null,
     is_published: false, // Coming soon — content not yet recorded
     created_at: '2026-01-01T00:00:00Z',
+    required_plan: 'gym-only',
     module_count: 6,
     total_duration_minutes: 72,
     completed_count: 0,
@@ -45,7 +47,8 @@ export const SEED_PATHWAYS: Pathway[] = [
     thumbnail_url: null,
     is_published: true,
     created_at: '2026-01-01T00:00:00Z',
-    module_count: 1,    // Only 1 module recorded so far (Recovery & DOMS)
+    required_plan: null, // Free to all members
+    module_count: 1,
     total_duration_minutes: 8,
     completed_count: 0,
   },
@@ -59,6 +62,7 @@ export const SEED_PATHWAYS: Pathway[] = [
     thumbnail_url: null,
     is_published: false, // Coming soon — content not yet recorded
     created_at: '2026-01-01T00:00:00Z',
+    required_plan: 'sweat',
     module_count: 4,
     total_duration_minutes: 36,
     completed_count: 0,
@@ -73,6 +77,7 @@ export const SEED_PATHWAYS: Pathway[] = [
     thumbnail_url: null,
     is_published: true,
     created_at: '2026-01-01T00:00:00Z',
+    required_plan: 'nutrition',
     module_count: 5,
     total_duration_minutes: 48,
     completed_count: 0,
@@ -364,12 +369,12 @@ export const SEED_MODULES: Record<string, Module[]> = {
 }
 
 export const SEED_RESOURCES: Resource[] = [
-  { id: 'r-1', title: 'Protein Sources Cheat Sheet', description: 'A quick-reference card for the best protein sources by food group, with gram-per-100g values.', category: 'nutrition', resource_type: 'pdf', url: '/resources/protein-cheat-sheet.pdf', thumbnail_url: null, is_published: true, created_at: '2026-01-01T00:00:00Z' },
-  { id: 'r-2', title: 'How to read an InBody result', description: 'A 3-minute video explaining what each number on your InBody printout means and what to focus on.', category: 'training', resource_type: 'video', url: 'https://www.youtube.com/embed/dQw4w9WgXcQ', thumbnail_url: null, is_published: true, created_at: '2026-01-01T00:00:00Z' },
-  { id: 'r-3', title: 'Gym Etiquette Guide', description: "Everything you need to know about how we do things at Number One HSP — from rack etiquette to chalk rules.", category: 'training', resource_type: 'pdf', url: '/resources/etiquette.pdf', thumbnail_url: null, is_published: true, created_at: '2026-01-01T00:00:00Z' },
-  { id: 'r-4', title: 'Hydration for Performance', description: 'Simple guidelines for staying hydrated before, during, and after training.', category: 'nutrition', resource_type: 'article', url: '#', thumbnail_url: null, is_published: true, created_at: '2026-01-01T00:00:00Z' },
-  { id: 'r-5', title: '10-minute Morning Mobility Routine', description: 'A coach-designed routine to do before your morning session. PDF + video walkthrough.', category: 'recovery', resource_type: 'video', url: 'https://www.youtube.com/embed/dQw4w9WgXcQ', thumbnail_url: null, is_published: true, created_at: '2026-01-01T00:00:00Z' },
-  { id: 'r-6', title: 'RPE Scale Explained', description: 'How to use Rate of Perceived Exertion to self-regulate training intensity.', category: 'training', resource_type: 'pdf', url: '/resources/rpe-scale.pdf', thumbnail_url: null, is_published: true, created_at: '2026-01-01T00:00:00Z' },
+  { id: 'r-1', title: 'Protein Sources Cheat Sheet', description: 'A quick-reference card for the best protein sources by food group, with gram-per-100g values.', category: 'nutrition', resource_type: 'pdf', url: '/resources/protein-cheat-sheet.pdf', thumbnail_url: null, is_published: true, created_at: '2026-01-01T00:00:00Z', required_plan: 'gym-only' },
+  { id: 'r-2', title: 'How to read an InBody result', description: 'A 3-minute video explaining what each number on your InBody printout means and what to focus on.', category: 'training', resource_type: 'video', url: 'https://www.youtube.com/embed/dQw4w9WgXcQ', thumbnail_url: null, is_published: true, created_at: '2026-01-01T00:00:00Z', required_plan: 'gym-only' },
+  { id: 'r-3', title: 'Gym Etiquette Guide', description: "Everything you need to know about how we do things at Number One HSP — from rack etiquette to chalk rules.", category: 'training', resource_type: 'pdf', url: '/resources/etiquette.pdf', thumbnail_url: null, is_published: true, created_at: '2026-01-01T00:00:00Z', required_plan: null },
+  { id: 'r-4', title: 'Hydration for Performance', description: 'Simple guidelines for staying hydrated before, during, and after training.', category: 'nutrition', resource_type: 'article', url: '#', thumbnail_url: null, is_published: true, created_at: '2026-01-01T00:00:00Z', required_plan: null },
+  { id: 'r-5', title: '10-minute Morning Mobility Routine', description: 'A coach-designed routine to do before your morning session. PDF + video walkthrough.', category: 'recovery', resource_type: 'video', url: 'https://www.youtube.com/embed/dQw4w9WgXcQ', thumbnail_url: null, is_published: true, created_at: '2026-01-01T00:00:00Z', required_plan: null },
+  { id: 'r-6', title: 'RPE Scale Explained', description: 'How to use Rate of Perceived Exertion to self-regulate training intensity.', category: 'training', resource_type: 'pdf', url: '/resources/rpe-scale.pdf', thumbnail_url: null, is_published: true, created_at: '2026-01-01T00:00:00Z', required_plan: 'gym-only' },
 ]
 
 export const SEED_QUIZ: Record<string, QuizQuestion[]> = {

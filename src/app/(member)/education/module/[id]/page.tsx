@@ -15,7 +15,8 @@ export default async function ModuleViewPage({
   const { id } = await params
 
   const cookieStore = await cookies()
-  const memberTier = (cookieStore.get('gymmaster_access_tier')?.value ?? 'standard') as 'full' | 'standard'
+  const { parseMemberPlans, canAccess } = await import('@/lib/education-access')
+  const memberPlans = parseMemberPlans(cookieStore.get('gymmaster_plans')?.value)
 
   // TODO: replace with Supabase query
   let module = null
@@ -32,8 +33,9 @@ export default async function ModuleViewPage({
 
   if (!module || !pathway) notFound()
 
-  // Block access to modules beyond the first one for standard-tier members
-  if (memberTier === 'standard' && module.module_order > 1) {
+  // Block access if the pathway requires a plan the member doesn't have, and this isn't module 1
+  const pathwayAccess = canAccess(pathway.required_plan, memberPlans)
+  if (pathwayAccess === 'locked' && module.module_order > 1) {
     return (
       <div className="max-w-3xl">
         <div className="flex items-center gap-2 text-xs text-text-secondary mb-6">
@@ -70,7 +72,7 @@ export default async function ModuleViewPage({
                 href="mailto:info@numberonehsp.com?subject=Upgrade to Perform"
                 className="px-5 py-2.5 rounded-xl bg-status-amber text-white text-sm font-semibold hover:bg-yellow-500 transition-colors"
               >
-                Upgrade to Perform →
+                Upgrade membership →
               </a>
             </div>
           </div>
