@@ -6,6 +6,7 @@ const EVENT_TYPE_CONFIG: Record<string, { emoji: string; colour: string; bg: str
   social:      { emoji: '🎉', colour: 'text-brand',          bg: 'bg-brand/10',        border: 'border-brand/20',        label: 'Social' },
   competition: { emoji: '🏆', colour: 'text-status-amber',   bg: 'bg-status-amber/10', border: 'border-status-amber/20', label: 'Competition' },
   workshop:    { emoji: '📚', colour: 'text-text-primary',   bg: 'bg-border-light',    border: 'border-border-light',    label: 'Workshop' },
+  bring_a_friend: { emoji: '🤝', colour: 'text-status-green', bg: 'bg-status-green/10', border: 'border-status-green/20', label: 'Bring a Friend' },
   other:       { emoji: '📌', colour: 'text-text-secondary', bg: 'bg-bg-main',         border: 'border-border-light',    label: 'Event' },
 }
 
@@ -69,6 +70,14 @@ export default async function GymEvents() {
                       <p className="text-xs text-text-secondary leading-relaxed">
                         {event.description}
                       </p>
+                    )}
+                    {event.event_type === 'bring_a_friend' && (
+                      <a
+                        href={`/community/bring-a-friend/${event.id}`}
+                        className="inline-block mt-2 text-xs font-semibold text-status-green hover:underline"
+                      >
+                        Register your guest →
+                      </a>
                     )}
                   </div>
                 </div>

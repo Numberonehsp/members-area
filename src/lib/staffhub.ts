@@ -447,3 +447,28 @@ export async function fetchMemberEvents(gymMasterId: string): Promise<MemberEven
     return []
   }
 }
+
+/**
+ * Fetch a single Bring a Friend event by ID.
+ * Returns null if the event doesn't exist or has a different event_type.
+ * Used by the bring-a-friend detail page to guard against wrong IDs.
+ */
+export async function fetchBringAFriendEvent(id: string): Promise<StaffHubEvent | null> {
+  if (!STAFFHUB_URL || !STAFFHUB_ANON_KEY) return null
+  try {
+    const { data, error } = await staffHubReader
+      .from('events')
+      .select('id, title, description, event_type, start_date, end_date, expires_at')
+      .eq('id', id)
+      .eq('event_type', 'bring_a_friend')
+      .maybeSingle()
+    if (error) {
+      console.warn('[StaffHub] fetchBringAFriendEvent failed:', error.message)
+      return null
+    }
+    return data
+  } catch (err) {
+    console.warn('[StaffHub] fetchBringAFriendEvent threw:', err)
+    return null
+  }
+}
