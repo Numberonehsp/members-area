@@ -6,11 +6,17 @@ import { type PendingTask, formatDueDate } from '@/lib/tasks'
 export default function TasksPanel({ initialTasks }: { initialTasks: PendingTask[] }) {
   const [tasks, setTasks] = useState(initialTasks)
   const [completing, setCompleting] = useState<string | null>(null)
+  const [errorId, setErrorId] = useState<string | null>(null)
 
   async function markComplete(id: string) {
     setCompleting(id)
+    setErrorId(null)
     const res = await fetch(`/api/member/tasks/${id}`, { method: 'PATCH' })
-    if (res.ok) setTasks(ts => ts.filter(t => t.id !== id))
+    if (res.ok) {
+      setTasks(ts => ts.filter(t => t.id !== id))
+    } else {
+      setErrorId(id)
+    }
     setCompleting(null)
   }
 
@@ -51,6 +57,9 @@ export default function TasksPanel({ initialTasks }: { initialTasks: PendingTask
                   <p className={`text-[11px] mt-0.5 font-medium ${due.overdue ? 'text-red-500' : 'text-text-secondary'}`}>
                     {due.label}
                   </p>
+                )}
+                {errorId === task.id && (
+                  <p className="text-[11px] text-red-400 mt-0.5">Couldn&apos;t mark complete — try again</p>
                 )}
               </div>
             </div>
