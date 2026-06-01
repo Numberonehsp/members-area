@@ -31,17 +31,25 @@ export function formatDueDate(
  * Uses Members Area Supabase anon key — server-side only.
  */
 export async function getPendingTasks(memberId: string): Promise<PendingTask[]> {
-  if (!memberId) return []
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  )
-  const { data } = await supabase
-    .from('member_tasks')
-    .select('id, title, description, due_date, set_by')
-    .eq('gymmaster_member_id', memberId)
-    .is('completed_at', null)
-    .order('due_date', { ascending: true, nullsFirst: false })
-    .limit(10)
-  return data ?? []
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!memberId || !url || !key) return []
+  try {
+    const supabase = createClient(url, key)
+    const { data, error } = await supabase
+      .from('member_tasks')
+      .select('id, title, description, due_date, set_by')
+      .eq('gymmaster_member_id', memberId)
+      .is('completed_at', null)
+      .order('due_date', { ascending: true, nullsFirst: false })
+      .limit(10)
+    if (error) {
+      console.warn('[tasks] getPendingTasks failed:', error.message)
+      return []
+    }
+    return data ?? []
+  } catch (err) {
+    console.warn('[tasks] getPendingTasks threw:', err)
+    return []
+  }
 }

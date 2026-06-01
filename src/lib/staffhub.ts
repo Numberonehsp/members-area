@@ -530,7 +530,7 @@ export async function fetchMemberBaFSignups(gymMasterId: string): Promise<Member
     const today = new Date().toISOString().split('T')[0]
     const { data, error } = await staffHubReader
       .from('bring_a_friend_signups')
-      .select('event_id, events!inner(id, title, start_date)')
+      .select('event_id, events!inner(title, start_date)')
       .eq('gymmaster_member_id', gymMasterId)
     if (error) {
       console.warn('[StaffHub] fetchMemberBaFSignups failed:', error.message)
