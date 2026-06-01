@@ -158,6 +158,8 @@ export default function ContentManager({ pathways: initPathways, modules: initMo
   // ── Draft state ──
   const [draftModule, setDraftModule] = useState<Partial<Module>>({})
   const [draftResource, setDraftResource] = useState<Partial<Resource>>({})
+  const [resourceSaving, setResourceSaving] = useState(false)
+  const [resourceSaveError, setResourceSaveError] = useState<string | null>(null)
 
   // ── Flash saved indicator ──
   function flashSaved(id: string) {
@@ -278,56 +280,79 @@ export default function ContentManager({ pathways: initPathways, modules: initMo
   function closeResourceModal() {
     setResourceModal(null)
     setDraftResource({})
+    setResourceSaveError(null)
   }
   async function saveResource() {
-    if (resourceModal === 'new') {
-      // New resource — write to education_resources table, get back a real UUID
-      const res = await fetch('/api/coach/content/resources', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: draftResource.title ?? 'New Resource',
-          description: draftResource.description ?? null,
-          category: draftResource.category ?? 'training',
-          resource_type: draftResource.resource_type ?? 'article',
-          url: draftResource.url ?? '',
-          required_plan: draftResource.required_plan ?? null,
-          is_published: draftResource.is_published ?? false,
-        }),
-      })
-      const json = await res.json()
-      if (res.ok && json.resource) {
-        setResources(prev => [...prev, json.resource as Resource])
-        flashSaved(json.resource.id)
-      }
-    } else if (resourceModal) {
-      const updated = { ...resourceModal, ...draftResource } as Resource
-      if (isSeedResource(resourceModal.id)) {
-        // Seed resource — only publish state / plan change via existing override mechanism
-        setResources(prev => prev.map(r => r.id === resourceModal.id ? updated : r))
-        flashSaved(resourceModal.id)
-        savePublish(resourceModal.id, 'resource', updated.is_published, updated.required_plan)
-      } else {
-        // DB resource — update all fields in education_resources
-        await fetch('/api/coach/content/resources', {
-          method: 'PUT',
+    setResourceSaving(true)
+    setResourceSaveError(null)
+    try {
+      if (resourceModal === 'new') {
+        // New resource — write to education_resources table, get back a real UUID
+        const res = await fetch('/api/coach/content/resources', {
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            id: resourceModal.id,
-            title: updated.title,
-            description: updated.description,
-            category: updated.category,
-            resource_type: updated.resource_type,
-            url: updated.url,
-            required_plan: updated.required_plan ?? null,
-            is_published: updated.is_published,
+            title: draftResource.title ?? 'New Resource',
+            description: draftResource.description ?? null,
+            category: draftResource.category ?? 'training',
+            resource_type: draftResource.resource_type ?? 'article',
+            url: draftResource.url ?? '',
+            required_plan: draftResource.required_plan ?? null,
+            is_published: draftResource.is_published ?? false,
           }),
         })
-        setResources(prev => prev.map(r => r.id === resourceModal.id ? updated : r))
-        flashSaved(resourceModal.id)
+        const json = await res.json()
+        if (!res.ok) {
+          setResourceSaveError(json.error ?? `Server error ${res.status} — please try again`)
+          return
+        }
+        if (!json.resource) {
+          setResourceSaveError('Resource was not returned from server — please refresh and try again')
+          return
+        }
+        setResources(prev => [...prev, json.resource as Resource])
+        flashSaved(json.resource.id)
+        closeResourceModal()
+      } else if (resourceModal) {
+        const updated = { ...resourceModal, ...draftResource } as Resource
+        if (isSeedResource(resourceModal.id)) {
+          // Seed resource — only publish state / plan change via existing override mechanism
+          setResources(prev => prev.map(r => r.id === resourceModal.id ? updated : r))
+          flashSaved(resourceModal.id)
+          savePublish(resourceModal.id, 'resource', updated.is_published, updated.required_plan)
+          closeResourceModal()
+        } else {
+          // DB resource — update all fields in education_resources
+          const res = await fetch('/api/coach/content/resources', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: resourceModal.id,
+              title: updated.title,
+              description: updated.description,
+              category: updated.category,
+              resource_type: updated.resource_type,
+              url: updated.url,
+              required_plan: updated.required_plan ?? null,
+              is_published: updated.is_published,
+            }),
+          })
+          if (!res.ok) {
+            const json = await res.json().catch(() => ({}))
+            setResourceSaveError(json.error ?? `Server error ${res.status} — please try again`)
+            return
+          }
+          setResources(prev => prev.map(r => r.id === resourceModal.id ? updated : r))
+          flashSaved(resourceModal.id)
+          closeResourceModal()
+        }
       }
+    } catch (err) {
+      setResourceSaveError(`Network error — please check your connection and try again`)
+      console.error('[ContentManager] saveResource threw:', err)
+    } finally {
+      setResourceSaving(false)
     }
-    closeResourceModal()
   }
   function toggleResourcePublished(id: string) {
     let newValue = false
@@ -770,19 +795,28 @@ export default function ContentManager({ pathways: initPathways, modules: initMo
               </div>
             </div>
 
-            <div className="p-5 border-t border-border-light flex gap-3">
-              <button
-                onClick={saveResource}
-                className="flex-1 py-2.5 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand-dark transition-colors"
-              >
-                {resourceModal === 'new' ? 'Add Resource' : 'Save Changes'}
-              </button>
-              <button
-                onClick={closeResourceModal}
-                className="px-5 py-2.5 rounded-xl border border-border-light text-text-secondary text-sm hover:border-brand/30 transition-colors"
-              >
-                Cancel
-              </button>
+            <div className="p-5 border-t border-border-light space-y-3">
+              {resourceSaveError && (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-3 py-2 text-xs text-red-400">
+                  ⚠ {resourceSaveError}
+                </div>
+              )}
+              <div className="flex gap-3">
+                <button
+                  onClick={saveResource}
+                  disabled={resourceSaving}
+                  className="flex-1 py-2.5 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand-dark transition-colors disabled:opacity-50"
+                >
+                  {resourceSaving ? 'Saving…' : resourceModal === 'new' ? 'Add Resource' : 'Save Changes'}
+                </button>
+                <button
+                  onClick={closeResourceModal}
+                  disabled={resourceSaving}
+                  className="px-5 py-2.5 rounded-xl border border-border-light text-text-secondary text-sm hover:border-brand/30 transition-colors disabled:opacity-40"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
         </div>

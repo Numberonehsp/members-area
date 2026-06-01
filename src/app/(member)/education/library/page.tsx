@@ -1,13 +1,19 @@
 import Link from 'next/link'
 import { cookies } from 'next/headers'
 import LibraryGrid from '@/components/education/LibraryGrid'
-import { SEED_RESOURCES } from '@/lib/education-seed'
+import { getContentWithOverrides } from '@/lib/content'
+
+export const dynamic = 'force-dynamic'
 
 export default async function OpenLibraryPage() {
   const cookieStore = await cookies()
   const memberPlans = Array.from(
     (await import('@/lib/education-access')).parseMemberPlans(cookieStore.get('gymmaster_plans')?.value)
   )
+
+  const { resources } = await getContentWithOverrides()
+  // Show published resources only; exclude foundations-gated content
+  const visibleResources = resources.filter(r => r.is_published && r.required_plan !== 'foundations')
 
   return (
     <div>
@@ -28,7 +34,7 @@ export default async function OpenLibraryPage() {
         </p>
       </div>
 
-      <LibraryGrid resources={SEED_RESOURCES.filter(r => r.required_plan !== 'foundations')} memberPlans={memberPlans} />
+      <LibraryGrid resources={visibleResources} memberPlans={memberPlans} />
     </div>
   )
 }
