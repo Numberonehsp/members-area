@@ -472,3 +472,89 @@ export async function fetchBringAFriendEvent(id: string): Promise<StaffHubEvent 
     return null
   }
 }
+
+// ── Member-scoped fetch helpers ───────────────────────────────────────────────
+
+export type MemberChallenge = {
+  challenge_id: string
+  name: string
+  start_date: string
+  end_date: string
+}
+
+/**
+ * Fetch active challenges the member is enrolled in (via challenge_participants).
+ * Only returns challenges where is_active = true.
+ */
+export async function fetchMemberChallenges(gymMasterId: string): Promise<MemberChallenge[]> {
+  if (!STAFFHUB_URL || !STAFFHUB_ANON_KEY || !gymMasterId) return []
+  try {
+    const { data, error } = await staffHubReader
+      .from('challenge_participants')
+      .select('challenge_id, challenges!inner(name, start_date, end_date, is_active)')
+      .eq('gymmaster_member_id', gymMasterId)
+    if (error) {
+      console.warn('[StaffHub] fetchMemberChallenges failed:', error.message)
+      return []
+    }
+    return (data ?? [])
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .filter((row: any) => row.challenges?.is_active === true)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .map((row: any) => ({
+        challenge_id: row.challenge_id as string,
+        name: row.challenges.name as string,
+        start_date: row.challenges.start_date as string,
+        end_date: row.challenges.end_date as string,
+      }))
+  } catch (err) {
+    console.warn('[StaffHub] fetchMemberChallenges threw:', err)
+    return []
+  }
+}
+
+export type MemberBaFSignup = {
+  event_id: string
+  title: string
+  start_date: string
+}
+
+/**
+ * Fetch upcoming Bring-a-Friend events the member has registered guests for.
+ * Deduplicates by event_id (member may have registered multiple guests).
+ * Only returns events with start_date >= today.
+ */
+export async function fetchMemberBaFSignups(gymMasterId: string): Promise<MemberBaFSignup[]> {
+  if (!STAFFHUB_URL || !STAFFHUB_ANON_KEY || !gymMasterId) return []
+  try {
+    const today = new Date().toISOString().split('T')[0]
+    const { data, error } = await staffHubReader
+      .from('bring_a_friend_signups')
+      .select('event_id, events!inner(id, title, start_date)')
+      .eq('gymmaster_member_id', gymMasterId)
+    if (error) {
+      console.warn('[StaffHub] fetchMemberBaFSignups failed:', error.message)
+      return []
+    }
+    // Deduplicate by event_id and filter for future events
+    const seen = new Set<string>()
+    const result: MemberBaFSignup[] = []
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const row of (data ?? []) as any[]) {
+      const startDate = row.events?.start_date as string | undefined
+      if (!startDate || startDate < today) continue
+      if (!seen.has(row.event_id)) {
+        seen.add(row.event_id)
+        result.push({
+          event_id: row.event_id as string,
+          title: row.events.title as string,
+          start_date: startDate,
+        })
+      }
+    }
+    return result.sort((a, b) => a.start_date.localeCompare(b.start_date))
+  } catch (err) {
+    console.warn('[StaffHub] fetchMemberBaFSignups threw:', err)
+    return []
+  }
+}
