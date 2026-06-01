@@ -4,11 +4,10 @@ import MessageNotification from "@/components/dashboard/MessageNotification";
 import WelcomeBanner from "@/components/dashboard/WelcomeBanner";
 import QuickStats from "@/components/dashboard/QuickStats";
 import AttendanceStreak from "@/components/dashboard/AttendanceStreak";
-import ChallengesPreview from "@/components/dashboard/ChallengesPreview";
 import AwardsPreview from "@/components/dashboard/AwardsPreview";
 import GymEvents from "@/components/dashboard/GymEvents";
 import ContinueLearning from "@/components/education/ContinueLearning";
-import CoachTasksPreview from "@/components/dashboard/CoachTasksPreview";
+import ActiveCard from "@/components/dashboard/ActiveCard";
 import { SEED_PATHWAYS, SEED_MODULES } from "@/lib/education-seed";
 import { fetchAnnouncements } from "@/lib/staffhub";
 import { getAnnualVisits } from "@/lib/gymmaster";
@@ -81,14 +80,11 @@ export default async function DashboardPage() {
         {/* Gym Events — live from Staff Hub */}
         <GymEvents />
 
-        {/* Active Challenges — live from Staff Hub */}
-        <ChallengesPreview />
+        {/* Personalised active card — tasks, challenges, guest sessions */}
+        <ActiveCard />
 
         {/* Latest Awards */}
         <AwardsPreview />
-
-        {/* Coach-assigned tasks */}
-        <CoachTasksPreview />
 
       </div>
     </div>

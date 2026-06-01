@@ -2,6 +2,8 @@ import { cookies } from 'next/headers'
 import { createClient } from '@supabase/supabase-js'
 import MessageThread from '@/components/messages/MessageThread'
 import type { Message } from '@/components/messages/MessageThread'
+import { getPendingTasks } from '@/lib/tasks'
+import TasksPanel from '@/components/messages/TasksPanel'
 
 async function getMessages(memberId: string): Promise<Message[]> {
   const supabase = createClient(
@@ -44,6 +46,7 @@ export default async function MemberMessagesPage() {
   const memberId = cookieStore.get('gymmaster_member_id')?.value ?? ''
 
   const messages = memberId ? await getMessages(memberId) : []
+  const tasks = memberId ? await getPendingTasks(memberId) : []
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)] max-w-2xl">
@@ -54,6 +57,8 @@ export default async function MemberMessagesPage() {
         </h1>
         <p className="text-text-secondary text-xs mt-1">Your conversation with the Number One HSP coaching team</p>
       </div>
+
+      {tasks.length > 0 && <TasksPanel initialTasks={tasks} />}
 
       <div className="flex-1 bg-bg-card border border-border-light rounded-2xl overflow-hidden min-h-0">
         <MessageThread
