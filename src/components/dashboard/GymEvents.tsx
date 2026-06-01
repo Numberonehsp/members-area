@@ -67,7 +67,7 @@ export default async function GymEvents() {
                       </span>
                     </div>
                     {event.description && (
-                      <p className="text-xs text-text-secondary leading-relaxed">
+                      <p className="text-xs text-text-secondary leading-relaxed whitespace-pre-line">
                         {event.description}
                       </p>
                     )}

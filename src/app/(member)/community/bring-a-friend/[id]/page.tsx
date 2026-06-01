@@ -44,7 +44,7 @@ export default async function BringAFriendPage({
           {formatDate(event.start_date)}
         </p>
         {event.description && (
-          <p className="text-sm text-text-secondary mt-3 leading-relaxed">
+          <p className="text-sm text-text-secondary mt-3 leading-relaxed whitespace-pre-line">
             {event.description}
           </p>
         )}

@@ -83,7 +83,17 @@ export default async function CommunityHubPage() {
   const EVENT_TYPE_LABELS: Record<string, string> = {
     competition: 'Competition',
     six_week_start: '6-Week Start',
+    bring_a_friend: 'Bring a Friend',
+    social: 'Social',
+    workshop: 'Workshop',
     other: 'Event',
+  }
+
+  const EVENT_TYPE_EMOJI: Record<string, string> = {
+    competition: '🏆',
+    bring_a_friend: '🤝',
+    social: '🎉',
+    workshop: '📚',
   }
 
   return (
@@ -114,16 +124,21 @@ export default async function CommunityHubPage() {
           <div className="space-y-2">
             {upcomingItems.map((item) => {
               const days = daysUntil(item.date)
-              return (
-                <div
-                  key={`${item.kind}-${item.id}`}
-                  className="bg-bg-card border border-border-light rounded-2xl px-4 py-3 flex items-center gap-3 relative overflow-hidden shadow-sm"
-                >
+              const isBringAFriend = item.kind === 'gym' && item.type === 'bring_a_friend'
+              const emoji = item.kind === 'personal'
+                ? '🎯'
+                : EVENT_TYPE_EMOJI[item.type] ?? '📌'
+
+              const inner = (
+                <>
                   <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-brand via-brand-light to-transparent" />
-                  <span className="text-lg shrink-0">{item.kind === 'personal' ? '🎯' : '📌'}</span>
+                  <span className="text-lg shrink-0">{emoji}</span>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-text-primary truncate">{item.title}</p>
                     <p className="text-xs text-text-secondary">{formatDate(item.date)}</p>
+                    {isBringAFriend && (
+                      <p className="text-xs text-status-green font-semibold mt-0.5">Tap to register a guest →</p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     {item.kind === 'personal' && (
@@ -140,6 +155,22 @@ export default async function CommunityHubPage() {
                       {days === 0 ? 'Today' : `${days}d`}
                     </span>
                   </div>
+                </>
+              )
+
+              const sharedClass = "bg-bg-card border border-border-light rounded-2xl px-4 py-3 flex items-center gap-3 relative overflow-hidden shadow-sm"
+
+              return isBringAFriend ? (
+                <Link
+                  key={`${item.kind}-${item.id}`}
+                  href={`/community/bring-a-friend/${item.id}`}
+                  className={`${sharedClass} hover:border-status-green/40 transition-colors`}
+                >
+                  {inner}
+                </Link>
+              ) : (
+                <div key={`${item.kind}-${item.id}`} className={sharedClass}>
+                  {inner}
                 </div>
               )
             })}
