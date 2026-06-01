@@ -260,6 +260,12 @@ export default function ContentManager({ pathways: initPathways, modules: initMo
     savePublish(moduleId, 'module', newValue)
   }
 
+  // ── Helpers ──
+  /** Seed resources have IDs like 'r-1', 'r-2'. DB resources have UUIDs. */
+  function isSeedResource(id: string): boolean {
+    return /^r-\d+$/.test(id)
+  }
+
   // ── Resource modal ──
   function openNewResource() {
     setDraftResource({ title: '', description: '', category: 'training', resource_type: 'video', url: '', is_published: false })
@@ -273,28 +279,53 @@ export default function ContentManager({ pathways: initPathways, modules: initMo
     setResourceModal(null)
     setDraftResource({})
   }
-  function saveResource() {
+  async function saveResource() {
     if (resourceModal === 'new') {
-      const newRes: Resource = {
-        id: `res-${Date.now()}`,
-        title: draftResource.title ?? 'New Resource',
-        description: draftResource.description ?? null,
-        category: draftResource.category ?? 'training',
-        resource_type: draftResource.resource_type ?? 'article',
-        url: draftResource.url ?? '',
-        thumbnail_url: null,
-        required_plan: draftResource.required_plan ?? null,
-        is_published: draftResource.is_published ?? false,
-        created_at: new Date().toISOString(),
+      // New resource — write to education_resources table, get back a real UUID
+      const res = await fetch('/api/coach/content/resources', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: draftResource.title ?? 'New Resource',
+          description: draftResource.description ?? null,
+          category: draftResource.category ?? 'training',
+          resource_type: draftResource.resource_type ?? 'article',
+          url: draftResource.url ?? '',
+          required_plan: draftResource.required_plan ?? null,
+          is_published: draftResource.is_published ?? false,
+        }),
+      })
+      const json = await res.json()
+      if (res.ok && json.resource) {
+        setResources(prev => [...prev, json.resource as Resource])
+        flashSaved(json.resource.id)
       }
-      setResources(prev => [...prev, newRes])
-      flashSaved(newRes.id)
-      savePublish(newRes.id, 'resource', newRes.is_published, newRes.required_plan)
     } else if (resourceModal) {
       const updated = { ...resourceModal, ...draftResource } as Resource
-      setResources(prev => prev.map(r => r.id === resourceModal.id ? updated : r))
-      flashSaved(resourceModal.id)
-      savePublish(resourceModal.id, 'resource', updated.is_published, updated.required_plan)
+      if (isSeedResource(resourceModal.id)) {
+        // Seed resource — only publish state / plan change via existing override mechanism
+        setResources(prev => prev.map(r => r.id === resourceModal.id ? updated : r))
+        flashSaved(resourceModal.id)
+        savePublish(resourceModal.id, 'resource', updated.is_published, updated.required_plan)
+      } else {
+        // DB resource — update all fields in education_resources
+        await fetch('/api/coach/content/resources', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: resourceModal.id,
+            title: updated.title,
+            description: updated.description,
+            category: updated.category,
+            resource_type: updated.resource_type,
+            url: updated.url,
+            required_plan: updated.required_plan ?? null,
+            is_published: updated.is_published,
+          }),
+        })
+        setResources(prev => prev.map(r => r.id === resourceModal.id ? updated : r))
+        flashSaved(resourceModal.id)
+      }
     }
     closeResourceModal()
   }
