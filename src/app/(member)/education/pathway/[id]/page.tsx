@@ -1,7 +1,11 @@
+export const dynamic = 'force-dynamic'
+
 import Link from 'next/link'
 import { cookies } from 'next/headers'
+import { createClient } from '@supabase/supabase-js'
 import { SEED_PATHWAYS, SEED_MODULES, getPathwayProgress } from '@/lib/education-seed'
 import { notFound } from 'next/navigation'
+import type { Pathway, Module } from '@/types/education'
 
 const CATEGORY_ICONS: Record<string, string> = {
   nutrition: '🥗', training: '🏋️', recovery: '🛌', mindset: '🧠',
@@ -13,6 +17,34 @@ const STATUS_CONFIG = {
   not_started: { icon: '○', colour: 'text-text-secondary',  bg: 'bg-bg-main',            border: 'border-border-light'       },
 }
 
+function isUuid(id: string) {
+  return /^[0-9a-f]{8}-/.test(id)
+}
+
+async function loadDbPathway(id: string): Promise<{ pathway: Pathway; modules: Module[] } | null> {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  )
+  const [{ data: p }, { data: mods }] = await Promise.all([
+    supabase.from('education_pathways').select('*').eq('id', id).single(),
+    supabase.from('education_modules').select('*').eq('pathway_id', id).order('module_order'),
+  ])
+  if (!p) return null
+  return {
+    pathway: {
+      id: p.id, title: p.title, description: p.description,
+      category: p.category, is_sequential: p.is_sequential,
+      display_order: p.display_order, thumbnail_url: p.thumbnail_url,
+      is_published: p.is_published, required_plan: p.required_plan ?? null,
+      created_at: p.created_at,
+      module_count: (mods ?? []).length,
+      total_duration_minutes: (mods ?? []).reduce((s: number, m: Module) => s + (m.duration_minutes ?? 0), 0),
+    },
+    modules: (mods ?? []).map((m: Module) => ({ ...m, progress_status: 'not_started' as const })),
+  }
+}
+
 export default async function PathwayDetailPage({
   params,
 }: PageProps<'/education/pathway/[id]'>) {
@@ -22,11 +54,20 @@ export default async function PathwayDetailPage({
   const { parseMemberPlans, canAccess } = await import('@/lib/education-access')
   const memberPlans = parseMemberPlans(cookieStore.get('gymmaster_plans')?.value)
 
-  // TODO: replace with Supabase query
-  const pathway = SEED_PATHWAYS.find(p => p.id === id)
-  if (!pathway) notFound()
+  let pathway: Pathway | undefined
+  let modules: Module[]
 
-  const modules = SEED_MODULES[id] ?? []
+  if (isUuid(id)) {
+    const result = await loadDbPathway(id)
+    if (!result) notFound()
+    pathway = result.pathway
+    modules = result.modules
+  } else {
+    pathway = SEED_PATHWAYS.find(p => p.id === id)
+    if (!pathway) notFound()
+    modules = SEED_MODULES[id] ?? []
+  }
+
   const pct = getPathwayProgress(modules)
   const completedCount = modules.filter(m => m.progress_status === 'completed').length
 
@@ -77,9 +118,7 @@ export default async function PathwayDetailPage({
           />
         </div>
         <div className="flex justify-between text-xs text-text-secondary mt-2">
-          <span>
-            {pathway.total_duration_minutes} min total
-          </span>
+          <span>{pathway.total_duration_minutes} min total</span>
           <span>{pct}% complete</span>
         </div>
       </div>
@@ -102,7 +141,6 @@ export default async function PathwayDetailPage({
         {modules
           .sort((a, b) => a.module_order - b.module_order)
           .map((module, idx) => {
-            // Lock modules 2+ when the pathway itself requires a plan the member doesn't have
             const membershipLocked =
               !!pathway.required_plan &&
               canAccess(pathway.required_plan, memberPlans) === 'locked' &&
@@ -149,24 +187,16 @@ function ModuleRow({
 }) {
   return (
     <div className="flex items-start gap-4">
-      {/* Status orb */}
       <div className={`w-8 h-8 rounded-full border flex items-center justify-center text-sm font-bold shrink-0 mt-0.5 ${cfg.bg} ${cfg.border} ${cfg.colour}`}>
         {membershipLocked ? '⭐' : locked ? '🔒' : cfg.icon}
       </div>
-
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <p className={`text-[10px] text-text-secondary mb-0.5`}>
-              Module {idx + 1}
-            </p>
-            <h3 className="font-semibold text-text-primary text-sm leading-snug">
-              {module.title}
-            </h3>
+            <p className="text-[10px] text-text-secondary mb-0.5">Module {idx + 1}</p>
+            <h3 className="font-semibold text-text-primary text-sm leading-snug">{module.title}</h3>
             {module.description && (
-              <p className="text-text-secondary text-xs mt-1 leading-relaxed line-clamp-2">
-                {module.description}
-              </p>
+              <p className="text-text-secondary text-xs mt-1 leading-relaxed line-clamp-2">{module.description}</p>
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -176,14 +206,10 @@ function ModuleRow({
               </span>
             )}
             {module.pdf_url && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-status-red/10 text-status-red border border-status-red/20">
-                PDF
-              </span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-status-red/10 text-status-red border border-status-red/20">PDF</span>
             )}
             {module.duration_minutes && (
-              <span className="text-[10px] text-text-secondary font-data">
-                {module.duration_minutes}m
-              </span>
+              <span className="text-[10px] text-text-secondary font-data">{module.duration_minutes}m</span>
             )}
           </div>
         </div>

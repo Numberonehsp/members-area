@@ -40,6 +40,9 @@ async function fetchDbPathways(): Promise<Pathway[]> {
       is_published: p.is_published as boolean,
       required_plan: (p.required_plan as Pathway['required_plan']) ?? null,
       created_at: p.created_at as string,
+      // module_count and total_duration_minutes filled in after modules are fetched
+      module_count: 0,
+      total_duration_minutes: 0,
     }))
   } catch (err) {
     console.warn('[content] fetchDbPathways threw:', err)
@@ -163,9 +166,15 @@ export async function getContentWithOverrides(): Promise<MergedContent> {
       return { ...m, is_published: ov ? ov.is_published : m.is_published }
     })
   }
-  // Merge DB modules (keyed by pathway UUID)
+  // Merge DB modules (keyed by pathway UUID) and compute counts on DB pathways
   for (const [pathwayId, mods] of Object.entries(dbModules)) {
     modules[pathwayId] = mods
+  }
+  // Annotate DB pathways with computed module_count / total_duration_minutes
+  for (const p of dbPathways) {
+    const mods = modules[p.id] ?? []
+    p.module_count = mods.length
+    p.total_duration_minutes = mods.reduce((sum, m) => sum + (m.duration_minutes ?? 0), 0)
   }
 
   const seedResources = SEED_RESOURCES.map(r => {
