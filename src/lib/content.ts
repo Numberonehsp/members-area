@@ -18,6 +18,70 @@ async function fetchOverrides(): Promise<Override[]> {
   return data ?? []
 }
 
+/** Fetch coach-created pathways stored in the database. */
+async function fetchDbPathways(): Promise<Pathway[]> {
+  try {
+    const { data, error } = await supabaseClient()
+      .from('education_pathways')
+      .select('id, title, description, category, is_sequential, display_order, thumbnail_url, is_published, required_plan, created_at')
+      .order('display_order', { ascending: true })
+    if (error) {
+      console.warn('[content] fetchDbPathways failed:', error.message)
+      return []
+    }
+    return (data ?? []).map(p => ({
+      id: p.id as string,
+      title: p.title as string,
+      description: p.description as string | null,
+      category: p.category as Pathway['category'],
+      is_sequential: p.is_sequential as boolean,
+      display_order: p.display_order as number,
+      thumbnail_url: p.thumbnail_url as string | null,
+      is_published: p.is_published as boolean,
+      required_plan: (p.required_plan as Pathway['required_plan']) ?? null,
+      created_at: p.created_at as string,
+    }))
+  } catch (err) {
+    console.warn('[content] fetchDbPathways threw:', err)
+    return []
+  }
+}
+
+/** Fetch modules for coach-created DB pathways. */
+async function fetchDbModules(): Promise<Record<string, Module[]>> {
+  try {
+    const { data, error } = await supabaseClient()
+      .from('education_modules')
+      .select('id, pathway_id, title, description, module_order, video_url, pdf_url, duration_minutes, is_published, created_at')
+      .order('module_order', { ascending: true })
+    if (error) {
+      console.warn('[content] fetchDbModules failed:', error.message)
+      return {}
+    }
+    const result: Record<string, Module[]> = {}
+    for (const m of data ?? []) {
+      const pid = m.pathway_id as string
+      if (!result[pid]) result[pid] = []
+      result[pid].push({
+        id: m.id as string,
+        pathway_id: pid,
+        title: m.title as string,
+        description: m.description as string | null,
+        module_order: m.module_order as number,
+        video_url: m.video_url as string | null,
+        pdf_url: m.pdf_url as string | null,
+        duration_minutes: m.duration_minutes as number | null,
+        is_published: m.is_published as boolean,
+        created_at: m.created_at as string,
+      })
+    }
+    return result
+  } catch (err) {
+    console.warn('[content] fetchDbModules threw:', err)
+    return {}
+  }
+}
+
 /** Fetch coach-created resources stored in the database (not seed content). */
 async function fetchDbResources(): Promise<Resource[]> {
   try {
@@ -60,8 +124,12 @@ export type MergedContent = {
 export async function getContentWithOverrides(): Promise<MergedContent> {
   let overrides: Override[] = []
   let dbResources: Resource[] = []
+  let dbPathways: Pathway[] = []
+  let dbModules: Record<string, Module[]> = {}
   try {
-    ;[overrides, dbResources] = await Promise.all([fetchOverrides(), fetchDbResources()])
+    ;[overrides, dbResources, dbPathways, dbModules] = await Promise.all([
+      fetchOverrides(), fetchDbResources(), fetchDbPathways(), fetchDbModules(),
+    ])
   } catch {
     // Tables not yet created — return raw seed defaults
   }
@@ -76,7 +144,7 @@ export async function getContentWithOverrides(): Promise<MergedContent> {
     overrides.filter(o => o.entity_type === 'resource').map(o => [o.id, o])
   )
 
-  const pathways = SEED_PATHWAYS.map(p => {
+  const seedPathways = SEED_PATHWAYS.map(p => {
     const ov = pathwayMap.get(p.id)
     return {
       ...p,
@@ -85,6 +153,9 @@ export async function getContentWithOverrides(): Promise<MergedContent> {
     }
   })
 
+  // DB pathways are fully resolved; merge after seed
+  const pathways = [...seedPathways, ...dbPathways]
+
   const modules: Record<string, Module[]> = {}
   for (const [pathwayId, mods] of Object.entries(SEED_MODULES)) {
     modules[pathwayId] = mods.map(m => {
@@ -92,8 +163,11 @@ export async function getContentWithOverrides(): Promise<MergedContent> {
       return { ...m, is_published: ov ? ov.is_published : m.is_published }
     })
   }
+  // Merge DB modules (keyed by pathway UUID)
+  for (const [pathwayId, mods] of Object.entries(dbModules)) {
+    modules[pathwayId] = mods
+  }
 
-  // Seed resources with publish overrides applied
   const seedResources = SEED_RESOURCES.map(r => {
     const ov = resourceMap.get(r.id)
     return {
@@ -103,7 +177,6 @@ export async function getContentWithOverrides(): Promise<MergedContent> {
     }
   })
 
-  // DB resources are already fully resolved (no override merging needed)
   const resources = [...seedResources, ...dbResources]
 
   return { pathways, modules, resources }

@@ -161,10 +161,99 @@ export default function ContentManager({ pathways: initPathways, modules: initMo
   const [resourceSaving, setResourceSaving] = useState(false)
   const [resourceSaveError, setResourceSaveError] = useState<string | null>(null)
 
+  // ── Pathway modal ──
+  const [pathwayModal, setPathwayModal] = useState<Pathway | 'new' | null>(null)
+  const [draftPathway, setDraftPathway] = useState<Partial<Pathway>>({})
+  const [pathwaySaving, setPathwaySaving] = useState(false)
+  const [pathwaySaveError, setPathwaySaveError] = useState<string | null>(null)
+  const [deletingPathwayId, setDeletingPathwayId] = useState<string | null>(null)
+
   // ── Flash saved indicator ──
   function flashSaved(id: string) {
     setSavedId(id)
     setTimeout(() => setSavedId(null), 2000)
+  }
+
+  // ── Pathway modal handlers ──
+  function openNewPathway() {
+    setDraftPathway({ title: '', description: '', category: 'training', is_published: false, required_plan: null })
+    setPathwayModal('new')
+  }
+  function openEditPathway(p: Pathway) {
+    setDraftPathway({ ...p })
+    setPathwayModal(p)
+  }
+  function closePathwayModal() {
+    setPathwayModal(null)
+    setDraftPathway({})
+    setPathwaySaveError(null)
+  }
+  async function savePathway() {
+    setPathwaySaving(true)
+    setPathwaySaveError(null)
+    try {
+      if (pathwayModal === 'new') {
+        const res = await fetch('/api/coach/content/pathways', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: draftPathway.title ?? '',
+            description: draftPathway.description ?? null,
+            category: draftPathway.category ?? 'training',
+            required_plan: draftPathway.required_plan ?? null,
+            is_published: draftPathway.is_published ?? false,
+            display_order: pathways.length + 1,
+          }),
+        })
+        const json = await res.json()
+        if (!res.ok) { setPathwaySaveError(json.error ?? 'Failed to create pathway'); return }
+        const newPathway = json.pathway as Pathway
+        setPathways(prev => [...prev, newPathway])
+        setModulesMap(prev => ({ ...prev, [newPathway.id]: [] }))
+        flashSaved(newPathway.id)
+        closePathwayModal()
+      } else if (pathwayModal) {
+        const res = await fetch('/api/coach/content/pathways', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: pathwayModal.id,
+            title: draftPathway.title ?? pathwayModal.title,
+            description: draftPathway.description ?? null,
+            category: draftPathway.category ?? pathwayModal.category,
+            required_plan: draftPathway.required_plan ?? null,
+            is_published: draftPathway.is_published ?? pathwayModal.is_published,
+          }),
+        })
+        if (!res.ok) {
+          const json = await res.json().catch(() => ({}))
+          setPathwaySaveError(json.error ?? 'Failed to update pathway')
+          return
+        }
+        setPathways(prev => prev.map(p => p.id === pathwayModal.id ? { ...p, ...draftPathway } as Pathway : p))
+        flashSaved(pathwayModal.id)
+        closePathwayModal()
+      }
+    } catch {
+      setPathwaySaveError('Network error — please try again')
+    } finally {
+      setPathwaySaving(false)
+    }
+  }
+  async function deletePathway(id: string) {
+    if (!confirm('Delete this pathway and all its modules? This cannot be undone.')) return
+    setDeletingPathwayId(id)
+    try {
+      await fetch('/api/coach/content/pathways', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      })
+      setPathways(prev => prev.filter(p => p.id !== id))
+      setModulesMap(prev => { const next = { ...prev }; delete next[id]; return next })
+    } finally {
+      setDeletingPathwayId(null)
+    }
   }
 
   // ── Persist publish state and/or required_plan ──
@@ -205,31 +294,95 @@ export default function ContentManager({ pathways: initPathways, modules: initMo
     setModuleModal(null)
     setDraftModule({})
   }
-  function saveModule() {
+  function isDbPathway(id: string): boolean {
+    // Seed pathway IDs are short strings like 'p-1'; DB pathways have UUIDs
+    return /^[0-9a-f]{8}-/.test(id)
+  }
+
+  async function saveModule() {
     if (!moduleModal) return
     const { pathwayId, module: existing } = moduleModal
-    setModulesMap(prev => {
-      const list = prev[pathwayId] ?? []
+    const useDb = isDbPathway(pathwayId)
+
+    if (useDb) {
+      // Persist to DB
       if (existing) {
-        return { ...prev, [pathwayId]: list.map(m => m.id === existing.id ? { ...m, ...draftModule } as Module : m) }
+        await fetch('/api/coach/content/modules', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: existing.id,
+            title: draftModule.title ?? existing.title,
+            description: draftModule.description ?? null,
+            video_url: draftModule.video_url || null,
+            pdf_url: draftModule.pdf_url || null,
+            duration_minutes: draftModule.duration_minutes ?? null,
+            is_published: draftModule.is_published ?? false,
+          }),
+        })
+        setModulesMap(prev => ({
+          ...prev,
+          [pathwayId]: (prev[pathwayId] ?? []).map(m => m.id === existing.id ? { ...m, ...draftModule } as Module : m),
+        }))
       } else {
-        const newMod: Module = {
-          id: `mod-${Date.now()}`,
-          pathway_id: pathwayId,
-          title: draftModule.title ?? 'New Module',
-          description: draftModule.description ?? null,
-          video_url: draftModule.video_url || null,
-          pdf_url: draftModule.pdf_url || null,
-          duration_minutes: draftModule.duration_minutes ?? null,
-          module_order: list.length + 1,
-          is_published: draftModule.is_published ?? false,
-          created_at: new Date().toISOString(),
+        const list = modulesMap[pathwayId] ?? []
+        const res = await fetch('/api/coach/content/modules', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pathway_id: pathwayId,
+            title: draftModule.title ?? 'New Module',
+            description: draftModule.description ?? null,
+            video_url: draftModule.video_url || null,
+            pdf_url: draftModule.pdf_url || null,
+            duration_minutes: draftModule.duration_minutes ?? null,
+            is_published: draftModule.is_published ?? false,
+            module_order: list.length + 1,
+          }),
+        })
+        const json = await res.json()
+        if (res.ok && json.module) {
+          setModulesMap(prev => ({ ...prev, [pathwayId]: [...(prev[pathwayId] ?? []), json.module as Module] }))
         }
-        return { ...prev, [pathwayId]: [...list, newMod] }
       }
-    })
+    } else {
+      // Seed pathway — local state only (publish overrides handled separately)
+      setModulesMap(prev => {
+        const list = prev[pathwayId] ?? []
+        if (existing) {
+          return { ...prev, [pathwayId]: list.map(m => m.id === existing.id ? { ...m, ...draftModule } as Module : m) }
+        } else {
+          const newMod: Module = {
+            id: `mod-${Date.now()}`,
+            pathway_id: pathwayId,
+            title: draftModule.title ?? 'New Module',
+            description: draftModule.description ?? null,
+            video_url: draftModule.video_url || null,
+            pdf_url: draftModule.pdf_url || null,
+            duration_minutes: draftModule.duration_minutes ?? null,
+            module_order: list.length + 1,
+            is_published: draftModule.is_published ?? false,
+            created_at: new Date().toISOString(),
+          }
+          return { ...prev, [pathwayId]: [...list, newMod] }
+        }
+      })
+    }
     flashSaved(pathwayId)
     closeModuleModal()
+  }
+
+  async function deleteModule(pathwayId: string, moduleId: string) {
+    if (!isDbPathway(pathwayId)) return
+    await fetch('/api/coach/content/modules', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: moduleId }),
+    })
+    setModulesMap(prev => ({
+      ...prev,
+      [pathwayId]: (prev[pathwayId] ?? []).filter(m => m.id !== moduleId),
+    }))
   }
 
   // ── Module reorder ──
@@ -399,6 +552,14 @@ export default function ContentManager({ pathways: initPathways, modules: initMo
       {/* ── PATHWAYS TAB ── */}
       {tab === 'pathways' && (
         <div className="space-y-3">
+          <div className="flex justify-end">
+            <button
+              onClick={openNewPathway}
+              className="bg-brand text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-brand-dark transition-colors"
+            >
+              + New Pathway
+            </button>
+          </div>
           {pathways.map(pathway => {
             const mods = modulesMap[pathway.id] ?? []
             const isExpanded = expandedPathway === pathway.id
@@ -430,7 +591,7 @@ export default function ContentManager({ pathways: initPathways, modules: initMo
                       {pathway.total_duration_minutes ? ` · ${pathway.total_duration_minutes} min total` : ''}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
                     <select
                       value={pathway.required_plan ?? ''}
                       onChange={e => setPathwayPlan(pathway.id, (e.target.value as EducationPlan) || null)}
@@ -444,6 +605,23 @@ export default function ContentManager({ pathways: initPathways, modules: initMo
                     >
                       {pathway.is_published ? 'Unpublish' : 'Publish'}
                     </button>
+                    {isDbPathway(pathway.id) && (
+                      <>
+                        <button
+                          onClick={() => openEditPathway(pathway)}
+                          className="text-xs px-3 py-1.5 rounded-lg bg-brand/10 border border-brand/20 text-brand font-medium hover:bg-brand/20 transition-colors"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => deletePathway(pathway.id)}
+                          disabled={deletingPathwayId === pathway.id}
+                          className="text-xs px-3 py-1.5 rounded-lg border border-status-red/20 text-status-red hover:bg-status-red/10 transition-colors disabled:opacity-40"
+                        >
+                          {deletingPathwayId === pathway.id ? '…' : 'Delete'}
+                        </button>
+                      </>
+                    )}
                     <button
                       onClick={() => setExpandedPathway(isExpanded ? null : pathway.id)}
                       className="w-8 h-8 flex items-center justify-center rounded-lg border border-border-light text-text-secondary hover:border-brand/30 hover:text-brand transition-colors"
@@ -515,6 +693,15 @@ export default function ContentManager({ pathways: initPathways, modules: initMo
                         >
                           Edit
                         </button>
+                        {isDbPathway(pathway.id) && (
+                          <button
+                            onClick={() => deleteModule(pathway.id, mod.id)}
+                            className="text-xs px-2 py-1.5 rounded-lg border border-status-red/20 text-status-red hover:bg-status-red/10 transition-colors shrink-0"
+                            title="Delete module"
+                          >
+                            ✕
+                          </button>
+                        )}
                       </div>
                     ))}
 
@@ -689,6 +876,97 @@ export default function ContentManager({ pathways: initPathways, modules: initMo
               >
                 Cancel
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── PATHWAY MODAL ── */}
+      {pathwayModal !== null && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
+          <div className="bg-bg-card border border-border-light rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="p-5 border-b border-border-light flex items-center justify-between">
+              <h2 className="font-display text-2xl text-text-primary">
+                {pathwayModal === 'new' ? 'New Pathway' : 'Edit Pathway'}
+              </h2>
+              <button onClick={closePathwayModal} className="w-8 h-8 flex items-center justify-center rounded-lg text-text-secondary hover:text-text-primary transition-colors">✕</button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider block mb-1.5">Title</label>
+                <input
+                  type="text"
+                  value={draftPathway.title ?? ''}
+                  onChange={e => setDraftPathway(d => ({ ...d, title: e.target.value }))}
+                  className="w-full bg-bg-main border border-border-light rounded-xl px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:border-brand transition-colors"
+                  placeholder="e.g. Sleep & Recovery Foundations"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider block mb-1.5">Description</label>
+                <textarea
+                  value={draftPathway.description ?? ''}
+                  onChange={e => setDraftPathway(d => ({ ...d, description: e.target.value }))}
+                  rows={3}
+                  className="w-full bg-bg-main border border-border-light rounded-xl px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:border-brand transition-colors resize-none"
+                  placeholder="Brief description shown to members"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider block mb-1.5">Category</label>
+                  <select
+                    value={draftPathway.category ?? 'training'}
+                    onChange={e => setDraftPathway(d => ({ ...d, category: e.target.value as Pathway['category'] }))}
+                    className="w-full bg-bg-main border border-border-light rounded-xl px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:border-brand transition-colors"
+                  >
+                    {CATEGORY_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-text-secondary font-semibold uppercase tracking-wider block mb-1.5">Access</label>
+                  <select
+                    value={draftPathway.required_plan ?? ''}
+                    onChange={e => setDraftPathway(d => ({ ...d, required_plan: (e.target.value as EducationPlan) || null }))}
+                    className="w-full bg-bg-main border border-border-light rounded-xl px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:border-brand transition-colors"
+                  >
+                    {PLAN_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="flex items-center justify-between pt-1">
+                <div>
+                  <p className="text-sm font-medium text-text-primary">Published</p>
+                  <p className="text-xs text-text-secondary">Visible to members in the Learn section</p>
+                </div>
+                <Toggle
+                  checked={draftPathway.is_published ?? false}
+                  onChange={v => setDraftPathway(d => ({ ...d, is_published: v }))}
+                />
+              </div>
+            </div>
+            <div className="p-5 border-t border-border-light space-y-3">
+              {pathwaySaveError && (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-3 py-2 text-xs text-red-400">
+                  ⚠ {pathwaySaveError}
+                </div>
+              )}
+              <div className="flex gap-3">
+                <button
+                  onClick={savePathway}
+                  disabled={pathwaySaving || !draftPathway.title?.trim()}
+                  className="flex-1 py-2.5 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand-dark transition-colors disabled:opacity-50"
+                >
+                  {pathwaySaving ? 'Saving…' : pathwayModal === 'new' ? 'Create Pathway' : 'Save Changes'}
+                </button>
+                <button
+                  onClick={closePathwayModal}
+                  disabled={pathwaySaving}
+                  className="px-5 py-2.5 rounded-xl border border-border-light text-text-secondary text-sm hover:border-brand/30 transition-colors disabled:opacity-40"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
         </div>
