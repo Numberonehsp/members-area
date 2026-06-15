@@ -168,6 +168,11 @@ export default function ContentManager({ pathways: initPathways, modules: initMo
   const [pathwaySaveError, setPathwaySaveError] = useState<string | null>(null)
   const [deletingPathwayId, setDeletingPathwayId] = useState<string | null>(null)
 
+  // ── Helpers ──
+  function isDbPathway(id: string): boolean {
+    return /^[0-9a-f]{8}-/.test(id)
+  }
+
   // ── Flash saved indicator ──
   function flashSaved(id: string) {
     setSavedId(id)
@@ -270,15 +275,32 @@ export default function ContentManager({ pathways: initPathways, modules: initMo
     const pathway = pathways.find(p => p.id === id)!
     setPathways(prev => prev.map(p => p.id === id ? { ...p, required_plan: plan } : p))
     flashSaved(id)
-    savePublish(id, 'pathway', pathway.is_published, plan)
+    if (isDbPathway(id)) {
+      fetch('/api/coach/content/pathways', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, title: pathway.title, description: pathway.description, category: pathway.category, required_plan: plan, is_published: pathway.is_published }),
+      })
+    } else {
+      savePublish(id, 'pathway', pathway.is_published, plan)
+    }
   }
 
   // ── Pathway actions ──
   function togglePathwayPublished(id: string) {
-    const newValue = !pathways.find(p => p.id === id)!.is_published
+    const pathway = pathways.find(p => p.id === id)!
+    const newValue = !pathway.is_published
     setPathways(prev => prev.map(p => p.id === id ? { ...p, is_published: newValue } : p))
     flashSaved(id)
-    savePublish(id, 'pathway', newValue)
+    if (isDbPathway(id)) {
+      fetch('/api/coach/content/pathways', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, title: pathway.title, description: pathway.description, category: pathway.category, required_plan: pathway.required_plan ?? null, is_published: newValue }),
+      })
+    } else {
+      savePublish(id, 'pathway', newValue)
+    }
   }
 
   // ── Module modal ──
@@ -294,11 +316,6 @@ export default function ContentManager({ pathways: initPathways, modules: initMo
     setModuleModal(null)
     setDraftModule({})
   }
-  function isDbPathway(id: string): boolean {
-    // Seed pathway IDs are short strings like 'p-1'; DB pathways have UUIDs
-    return /^[0-9a-f]{8}-/.test(id)
-  }
-
   async function saveModule() {
     if (!moduleModal) return
     const { pathwayId, module: existing } = moduleModal
@@ -415,8 +432,6 @@ export default function ContentManager({ pathways: initPathways, modules: initMo
     savePublish(moduleId, 'module', newValue)
   }
 
-  // ── Helpers ──
-  /** Seed resources have IDs like 'r-1', 'r-2'. DB resources have UUIDs. */
   function isSeedResource(id: string): boolean {
     return /^r-\d+$/.test(id)
   }
