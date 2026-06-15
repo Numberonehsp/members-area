@@ -18,31 +18,61 @@ export async function GET() {
   return NextResponse.json({ entries: data ?? [] })
 }
 
-/** POST — coach enters a strength result on behalf of a member */
+/** POST — coach enters one or more strength results on behalf of a member */
 export async function POST(request: NextRequest) {
   const body = await request.json()
-  const { gymmaster_member_id, member_name, exercise, result_value, result_notes, tested_date } = body
+  const { gymmaster_member_id, member_name, tested_date, notes } = body
 
-  if (!gymmaster_member_id || !exercise || result_value == null || !tested_date) {
+  if (!gymmaster_member_id || !tested_date) {
     return NextResponse.json(
-      { error: 'gymmaster_member_id, exercise, result_value and tested_date are required' },
+      { error: 'gymmaster_member_id and tested_date are required' },
       { status: 400 },
     )
   }
 
-  const { error } = await staffHubWriter
-    .from('strength_results')
-    .insert({
-      gymmaster_member_id,
-      member_name: member_name || null,
-      exercise,
-      result_value: Number(result_value),
-      result_notes: result_notes || null,
-      tested_date,
-    })
+  // Support both batch (entries array) and legacy single-exercise shape
+  const entries: Array<{ exercise: string; result_value: number; exercise_notes?: string | null }> =
+    Array.isArray(body.entries)
+      ? body.entries
+      : [{ exercise: body.exercise, result_value: body.result_value, exercise_notes: body.result_notes }]
+
+  if (entries.length === 0 || entries.some((e) => !e.exercise || e.result_value == null)) {
+    return NextResponse.json(
+      { error: 'Each entry requires exercise and result_value' },
+      { status: 400 },
+    )
+  }
+
+  const rows = entries.map((e) => ({
+    gymmaster_member_id,
+    member_name: member_name || null,
+    exercise: e.exercise,
+    result_value: Number(e.result_value),
+    result_notes: e.exercise_notes || notes || null,
+    tested_date,
+  }))
+
+  const { error } = await staffHubWriter.from('strength_results').insert(rows)
 
   if (error) {
     console.error('[coach/strength] insert failed:', error.message)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ ok: true })
+}
+
+/** DELETE — remove a specific result row by id */
+export async function DELETE(request: NextRequest) {
+  const { id } = await request.json()
+  if (!id) {
+    return NextResponse.json({ error: 'id is required' }, { status: 400 })
+  }
+
+  const { error } = await staffHubWriter.from('strength_results').delete().eq('id', id)
+
+  if (error) {
+    console.error('[coach/strength] delete failed:', error.message)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 

@@ -68,6 +68,7 @@ function QuickEntryTab() {
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const exercise = EXERCISES.find(e => e.name === selectedExercise) ?? EXERCISES[0]
 
@@ -76,6 +77,20 @@ function QuickEntryTab() {
     if (res.ok) {
       const data = await res.json()
       setRecentEntries(data.entries ?? [])
+    }
+  }
+
+  async function handleDelete(id: string) {
+    setDeletingId(id)
+    try {
+      const res = await fetch('/api/coach/strength', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      })
+      if (res.ok) setRecentEntries(prev => prev.filter(e => e.id !== id))
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -202,7 +217,7 @@ function QuickEntryTab() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border-light bg-bg-main/50">
-                    {['Member', 'Date', 'Exercise', 'Result', 'Notes'].map(col => (
+                    {['Member', 'Date', 'Exercise', 'Result', 'Notes', ''].map(col => (
                       <th key={col} className="text-left px-4 py-3 text-xs font-semibold text-text-secondary uppercase tracking-wider">{col}</th>
                     ))}
                   </tr>
@@ -217,6 +232,25 @@ function QuickEntryTab() {
                       <td className="px-4 py-3 text-text-primary text-xs">{entry.exercise}</td>
                       <td className="px-4 py-3 font-data text-text-primary font-semibold">{entry.result_value}</td>
                       <td className="px-4 py-3 text-text-secondary text-xs">{entry.result_notes ?? '—'}</td>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => handleDelete(entry.id)}
+                          disabled={deletingId === entry.id}
+                          className="text-text-muted hover:text-status-red transition-colors disabled:opacity-40"
+                          title="Delete entry"
+                        >
+                          {deletingId === entry.id ? (
+                            <span className="text-xs">…</span>
+                          ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="3 6 5 6 21 6" />
+                              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                              <path d="M10 11v6M14 11v6" />
+                              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                            </svg>
+                          )}
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
