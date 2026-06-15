@@ -319,10 +319,8 @@ function TestingBlockTab() {
         const value = parseFloat(raw)
         if (isNaN(value)) return null
         return {
-          exercise_name: ex.name,
-          value,
-          unit: ex.unit,
-          higher_is_better: ex.higherIsBetter,
+          exercise: ex.name,
+          result_value: value,
           exercise_notes: ex.hasNotes ? (exerciseNotes[ex.key]?.trim() || null) : null,
         }
       })
@@ -343,7 +341,7 @@ function TestingBlockTab() {
         body: JSON.stringify({
           gymmaster_member_id: selectedMemberId,
           member_name: selectedMemberName,
-          test_date: testDate,
+          tested_date: testDate,
           testing_block: blockInput.trim(),
           notes: notes.trim() || null,
           entries,
