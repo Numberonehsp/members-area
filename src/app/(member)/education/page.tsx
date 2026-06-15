@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { cookies } from 'next/headers'
 import CategoryTabs from '@/components/education/CategoryTabs'
 import ContinueLearning from '@/components/education/ContinueLearning'
