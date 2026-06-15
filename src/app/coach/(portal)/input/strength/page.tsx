@@ -103,6 +103,12 @@ function QuickEntryTab() {
     loadRecentEntries()
   }, [])
 
+  function resolveName(entry: RecentEntry): string {
+    if (entry.member_name) return entry.member_name
+    const match = members.find(m => m.id === entry.gymmaster_member_id)
+    return match ? match.name : `ID ${entry.gymmaster_member_id}`
+  }
+
   useEffect(() => {
     if (!exercise.hasNotes) setResultNotes('')
   }, [exercise])
@@ -226,7 +232,7 @@ function QuickEntryTab() {
                   {recentEntries.map(entry => (
                     <tr key={entry.id} className="hover:bg-bg-main/60 transition-colors">
                       <td className="px-4 py-3 font-medium text-text-primary text-sm">
-                        {entry.member_name ?? <span className="text-text-secondary text-xs">ID {entry.gymmaster_member_id}</span>}
+                        {resolveName(entry)}
                       </td>
                       <td className="px-4 py-3 font-data text-text-secondary text-xs whitespace-nowrap">{formatDate(entry.tested_date)}</td>
                       <td className="px-4 py-3 text-text-primary text-xs">{entry.exercise}</td>
