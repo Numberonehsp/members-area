@@ -271,22 +271,28 @@ function QuickEntryTab() {
 
 // ─── Tab 2: Testing Block ──────────────────────────────────────────────────────
 
+type QueueMember = Member & { done: boolean }
+
 function TestingBlockTab() {
   const [step, setStep] = useState<1 | 2>(1)
   const [blockInput, setBlockInput] = useState('')
-  const [selectedMemberId, setSelectedMemberId] = useState('')
-  const [selectedMemberName, setSelectedMemberName] = useState('')
+  const [testDate, setTestDate] = useState(todayString())
+
+  // Queue
+  const [memberQueue, setMemberQueue] = useState<QueueMember[]>([])
+  const [queueSearch, setQueueSearch] = useState('')
+  const [activeQueueIdx, setActiveQueueIdx] = useState(0)
+
+  // Per-member entry
   const [results, setResults] = useState<Partial<Record<string, string>>>({})
   const [exerciseNotes, setExerciseNotes] = useState<Partial<Record<string, string>>>({})
-  const [testDate, setTestDate] = useState(todayString())
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
+  const [justSaved, setJustSaved] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
 
   const [gmMembers, setGmMembers] = useState<Member[]>([])
   const [gmLoading, setGmLoading] = useState(true)
-  const [gmSearch, setGmSearch] = useState('')
 
   useEffect(() => {
     fetch('/api/gymmaster/members')
@@ -295,29 +301,50 @@ function TestingBlockTab() {
       .catch(() => setGmLoading(false))
   }, [])
 
-  const filteredMembers = gmSearch.length >= 1
-    ? gmMembers.filter(m => m.name.toLowerCase().includes(gmSearch.toLowerCase())).slice(0, 20)
-    : gmMembers.slice(0, 20)
+  const queueFiltered = queueSearch.length >= 1
+    ? gmMembers.filter(m => m.name.toLowerCase().includes(queueSearch.toLowerCase()) && !memberQueue.some(q => q.id === m.id)).slice(0, 10)
+    : []
 
-  function handleMemberSelect(id: string) {
-    const member = gmMembers.find(m => m.id === id)
-    setSelectedMemberId(id)
-    setSelectedMemberName(member?.name ?? '')
-    setGmSearch(member?.name ?? '')
+  function addToQueue(m: Member) {
+    setMemberQueue(prev => [...prev, { ...m, done: false }])
+    setQueueSearch('')
   }
 
-  function handleStartEntry() {
-    if (!blockInput.trim() || !selectedMemberId) return
-    setStep(2)
+  function removeFromQueue(id: string) {
+    setMemberQueue(prev => prev.filter(q => q.id !== id))
+  }
+
+  function resetInputs() {
     setResults({})
     setExerciseNotes({})
     setNotes('')
-    setTestDate(todayString())
-    setSaved(false)
     setSaveError(null)
+    setJustSaved(null)
+  }
+
+  function startSession() {
+    if (!blockInput.trim() || memberQueue.length === 0) return
+    setActiveQueueIdx(0)
+    resetInputs()
+    setStep(2)
+  }
+
+  function endSession() {
+    setStep(1)
+    setBlockInput('')
+    setTestDate(todayString())
+    setMemberQueue([])
+    setQueueSearch('')
+    resetInputs()
+  }
+
+  function switchMember(idx: number) {
+    setActiveQueueIdx(idx)
+    resetInputs()
   }
 
   async function handleSave() {
+    const current = memberQueue[activeQueueIdx]
     const entries = EXERCISES
       .map(ex => {
         const raw = results[ex.key]?.trim()
@@ -332,10 +359,7 @@ function TestingBlockTab() {
       })
       .filter(Boolean)
 
-    if (entries.length === 0) {
-      setSaveError('Enter at least one result before saving.')
-      return
-    }
+    if (entries.length === 0) { setSaveError('Enter at least one result before saving.'); return }
 
     setSaving(true)
     setSaveError(null)
@@ -345,8 +369,8 @@ function TestingBlockTab() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          gymmaster_member_id: selectedMemberId,
-          member_name: selectedMemberName,
+          gymmaster_member_id: current.id,
+          member_name: current.name,
           tested_date: testDate,
           testing_block: blockInput.trim(),
           notes: notes.trim() || null,
@@ -359,18 +383,18 @@ function TestingBlockTab() {
         throw new Error(data.error ?? `HTTP ${res.status}`)
       }
 
-      setSaved(true)
+      setJustSaved(current.name)
+      setMemberQueue(prev => prev.map((q, i) => i === activeQueueIdx ? { ...q, done: true } : q))
+
       setTimeout(() => {
-        setStep(1)
-        setSelectedMemberId('')
-        setSelectedMemberName('')
-        setGmSearch('')
-        setBlockInput('')
-        setResults({})
-        setExerciseNotes({})
-        setNotes('')
-        setSaved(false)
-      }, 2000)
+        const nextIdx = memberQueue.findIndex((q, i) => i > activeQueueIdx && !q.done)
+        if (nextIdx !== -1) {
+          setActiveQueueIdx(nextIdx)
+          resetInputs()
+        } else {
+          setJustSaved(current.name)
+        }
+      }, 1400)
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Save failed')
     } finally {
@@ -378,122 +402,188 @@ function TestingBlockTab() {
     }
   }
 
+  const allDone = memberQueue.length > 0 && memberQueue.every(q => q.done)
+  const doneCount = memberQueue.filter(q => q.done).length
+  const current = memberQueue[activeQueueIdx]
+
   return (
     <div className="space-y-4">
-      {saved && (
-        <div className="bg-status-green/10 border border-status-green/20 text-status-green rounded-xl px-5 py-3 text-sm font-medium">
-          Results saved! ✓
-        </div>
-      )}
-      {saveError && (
-        <div className="bg-status-red/10 border border-status-red/20 text-status-red rounded-xl px-5 py-3 text-sm font-medium">
-          {saveError}
-        </div>
-      )}
-
       {step === 1 && (
         <div className="bg-bg-card border border-border-light rounded-2xl shadow-sm relative overflow-hidden max-w-lg">
           <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-brand via-brand-light to-transparent" />
           <div className="px-6 py-5 border-b border-border-light">
-            <h2 className="font-semibold text-text-primary text-sm">Step 1 — Select Block &amp; Member</h2>
+            <h2 className="font-semibold text-text-primary text-sm">Step 1 — Set Up Session</h2>
           </div>
           <div className="px-6 py-5 space-y-5">
             <div>
               <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">Testing Block</label>
-              <input type="text" value={blockInput} onChange={e => setBlockInput(e.target.value)} placeholder="e.g. April 2026" className="w-full text-sm bg-bg-main border border-border-light rounded-lg px-3 py-2 text-text-primary placeholder:text-text-secondary focus:outline-none focus:border-brand transition-colors" />
+              <input type="text" value={blockInput} onChange={e => setBlockInput(e.target.value)} placeholder="e.g. June 2026" className="w-full text-sm bg-bg-main border border-border-light rounded-lg px-3 py-2 text-text-primary placeholder:text-text-secondary focus:outline-none focus:border-brand transition-colors" />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">Member</label>
+              <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">Test Date</label>
+              <input type="date" value={testDate} onChange={e => setTestDate(e.target.value)} className="w-full text-sm bg-bg-main border border-border-light rounded-lg px-3 py-2 text-text-primary focus:outline-none focus:border-brand transition-colors" />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">Members in this session</label>
               {gmLoading ? (
                 <p className="text-sm text-text-secondary">Loading members…</p>
               ) : (
-                <>
-                  <input type="text" value={gmSearch} onChange={e => { setGmSearch(e.target.value); setSelectedMemberId(''); setSelectedMemberName('') }} placeholder="Search member name…" className="w-full text-sm bg-bg-main border border-border-light rounded-lg px-3 py-2 text-text-primary placeholder:text-text-secondary focus:outline-none focus:border-brand transition-colors mb-2" />
-                  {gmSearch.length >= 1 && !selectedMemberId && (
-                    <ul className="border border-border-light rounded-xl overflow-hidden divide-y divide-border-light max-h-52 overflow-y-auto">
-                      {filteredMembers.length === 0 ? (
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={queueSearch}
+                    onChange={e => setQueueSearch(e.target.value)}
+                    placeholder="Search and add members…"
+                    className="w-full text-sm bg-bg-main border border-border-light rounded-lg px-3 py-2 text-text-primary placeholder:text-text-secondary focus:outline-none focus:border-brand transition-colors"
+                  />
+                  {queueSearch.length >= 1 && (
+                    <ul className="absolute z-10 top-full left-0 right-0 mt-1 border border-border-light rounded-xl overflow-hidden divide-y divide-border-light max-h-48 overflow-y-auto bg-bg-card shadow-lg">
+                      {queueFiltered.length === 0 ? (
                         <li className="px-4 py-3 text-sm text-text-secondary">No members found</li>
-                      ) : filteredMembers.map(m => (
+                      ) : queueFiltered.map(m => (
                         <li key={m.id}>
-                          <button type="button" onClick={() => handleMemberSelect(m.id)} className="w-full text-left px-4 py-2.5 text-sm text-text-primary hover:bg-bg-main transition-colors">
+                          <button type="button" onClick={() => addToQueue(m)} className="w-full text-left px-4 py-2.5 text-sm text-text-primary hover:bg-bg-main transition-colors">
                             {m.name}
                           </button>
                         </li>
                       ))}
                     </ul>
                   )}
-                  {selectedMemberId && <p className="text-xs text-status-green font-medium">✓ {selectedMemberName}</p>}
-                </>
+                </div>
+              )}
+              {memberQueue.length > 0 && (
+                <ul className="mt-2 space-y-1">
+                  {memberQueue.map(m => (
+                    <li key={m.id} className="flex items-center justify-between bg-bg-main border border-border-light rounded-lg px-3 py-1.5">
+                      <span className="text-sm text-text-primary">{m.name}</span>
+                      <button onClick={() => removeFromQueue(m.id)} className="text-text-muted hover:text-status-red transition-colors text-lg leading-none">×</button>
+                    </li>
+                  ))}
+                </ul>
               )}
             </div>
 
-            <button onClick={handleStartEntry} disabled={!blockInput.trim() || !selectedMemberId} className="w-full bg-brand text-white text-sm font-semibold py-2.5 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed">
-              Start Entry →
+            <button
+              onClick={startSession}
+              disabled={!blockInput.trim() || memberQueue.length === 0}
+              className="w-full bg-brand text-white text-sm font-semibold py-2.5 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Start Session →
             </button>
           </div>
         </div>
       )}
 
       {step === 2 && (
-        <div className="bg-bg-card border border-border-light rounded-2xl shadow-sm relative overflow-hidden max-w-2xl">
-          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-brand via-brand-light to-transparent" />
-          <div className="px-6 py-4 border-b border-border-light flex items-center gap-4">
-            <p className="text-sm text-text-primary font-medium flex-1">
-              Testing block: <span className="text-brand font-semibold">{blockInput}</span>
-              <span className="text-text-secondary mx-2">·</span>
-              Member: <span className="text-brand font-semibold">{selectedMemberName}</span>
-            </p>
-            <button onClick={() => { setStep(1); setSaved(false); setSaveError(null) }} className="text-xs text-brand hover:text-brand-dark transition-colors font-medium shrink-0">← Change</button>
-          </div>
-
-          <div className="px-6 py-5 space-y-4">
+        <div className="space-y-4 max-w-2xl">
+          {/* Session bar */}
+          <div className="bg-bg-card border border-border-light rounded-xl px-5 py-3 flex items-center justify-between gap-4">
             <div>
-              <h2 className="font-semibold text-text-primary text-sm mb-1">Step 2 — Enter Results</h2>
-              <p className="text-xs text-text-secondary">Leave blank for exercises not tested.</p>
+              <p className="text-sm font-semibold text-text-primary">
+                {blockInput}
+                <span className="text-text-secondary font-normal mx-2">·</span>
+                <span className="text-text-secondary font-normal text-xs">
+                  {new Date(testDate + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </span>
+              </p>
+              <p className="text-xs text-text-secondary mt-0.5">{doneCount}/{memberQueue.length} members saved</p>
             </div>
-
-            <div className="space-y-3">
-              {EXERCISES.map(ex => {
-                const val = results[ex.key] ?? ''
-                return (
-                  <div key={ex.key} className="space-y-1.5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-40 shrink-0">
-                        <span className="text-sm text-text-primary font-medium">{ex.name}</span>
-                      </div>
-                      <div className="flex items-center gap-2 flex-1">
-                        <input type="number" value={val} onChange={e => setResults(r => ({ ...r, [ex.key]: e.target.value }))} placeholder={ex.placeholder} min={0} step="0.1" className="w-28 text-sm bg-bg-main border border-border-light rounded-lg px-3 py-1.5 text-text-primary font-data placeholder:text-text-muted focus:outline-none focus:border-brand transition-colors text-right" />
-                        <span className="text-xs text-text-secondary w-10 shrink-0">{ex.unit}</span>
-                        <span className="text-[10px] text-text-muted">{ex.higherIsBetter ? '↑ higher' : '↓ lower'}</span>
-                      </div>
-                    </div>
-                    {ex.hasNotes && val && (
-                      <div className="ml-40 pl-3">
-                        <input type="text" value={exerciseNotes[ex.key] ?? ''} onChange={e => setExerciseNotes(n => ({ ...n, [ex.key]: e.target.value }))} placeholder={ex.notesPlaceholder ?? 'Notes…'} className="w-full text-xs bg-bg-main border border-border-light rounded-lg px-3 py-1.5 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand transition-colors" />
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-
-            <hr className="border-border-light" />
-
-            <div>
-              <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">Test Date</label>
-              <input type="date" value={testDate} onChange={e => setTestDate(e.target.value)} className="text-sm bg-bg-main border border-border-light rounded-lg px-3 py-2 text-text-primary focus:outline-none focus:border-brand transition-colors" />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">General Notes</label>
-              <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder="Any observations, conditions, or context…" className="w-full text-sm bg-bg-main border border-border-light rounded-lg px-3 py-2 text-text-primary placeholder:text-text-secondary focus:outline-none focus:border-brand transition-colors resize-none" />
-            </div>
-
-            <button onClick={handleSave} disabled={saving} className="w-full bg-brand text-white text-sm font-semibold py-2.5 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-60 disabled:cursor-not-allowed">
-              {saving ? 'Saving…' : 'Save Results'}
+            <button onClick={endSession} className="text-xs text-text-secondary hover:text-text-primary transition-colors font-medium shrink-0 border border-border-light rounded-lg px-3 py-1.5">
+              End Session
             </button>
           </div>
+
+          {/* Member tabs */}
+          <div className="flex gap-2 flex-wrap">
+            {memberQueue.map((m, i) => (
+              <button
+                key={m.id}
+                onClick={() => switchMember(i)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium border transition-colors ${
+                  i === activeQueueIdx
+                    ? 'bg-brand/10 text-brand border-brand/30'
+                    : m.done
+                    ? 'bg-status-green/10 text-status-green border-status-green/20'
+                    : 'bg-bg-card text-text-secondary border-border-light hover:text-text-primary'
+                }`}
+              >
+                {m.done && <span>✓</span>}
+                {m.name.split(' ')[0]}
+              </button>
+            ))}
+          </div>
+
+          {allDone && (
+            <div className="bg-status-green/10 border border-status-green/20 text-status-green rounded-xl px-5 py-3 text-sm font-medium flex items-center justify-between">
+              <span>✓ All {memberQueue.length} members saved!</span>
+              <button onClick={endSession} className="text-xs bg-status-green text-white px-3 py-1.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">
+                End Session
+              </button>
+            </div>
+          )}
+
+          {justSaved && !allDone && (
+            <div className="bg-status-green/10 border border-status-green/20 text-status-green rounded-xl px-5 py-3 text-sm font-medium">
+              ✓ {justSaved} saved — moving to next member
+            </div>
+          )}
+
+          {saveError && (
+            <div className="bg-status-red/10 border border-status-red/20 text-status-red rounded-xl px-5 py-3 text-sm font-medium">
+              {saveError}
+            </div>
+          )}
+
+          {!allDone && current && (
+            <div className="bg-bg-card border border-border-light rounded-2xl shadow-sm relative overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-brand via-brand-light to-transparent" />
+              <div className="px-6 py-4 border-b border-border-light">
+                <p className="text-xs text-text-secondary uppercase tracking-wider font-semibold mb-0.5">Entering results for</p>
+                <p className="font-semibold text-text-primary">{current.name}</p>
+              </div>
+              <div className="px-6 py-5 space-y-4">
+                <p className="text-xs text-text-secondary">Leave blank for exercises not tested.</p>
+                <div className="space-y-3">
+                  {EXERCISES.map(ex => {
+                    const val = results[ex.key] ?? ''
+                    return (
+                      <div key={ex.key} className="space-y-1.5">
+                        <div className="flex items-center gap-3">
+                          <div className="w-40 shrink-0">
+                            <span className="text-sm text-text-primary font-medium">{ex.name}</span>
+                          </div>
+                          <div className="flex items-center gap-2 flex-1">
+                            <input type="number" value={val} onChange={e => setResults(r => ({ ...r, [ex.key]: e.target.value }))} placeholder={ex.placeholder} min={0} step="0.1" className="w-28 text-sm bg-bg-main border border-border-light rounded-lg px-3 py-1.5 text-text-primary font-data placeholder:text-text-muted focus:outline-none focus:border-brand transition-colors text-right" />
+                            <span className="text-xs text-text-secondary w-10 shrink-0">{ex.unit}</span>
+                            <span className="text-[10px] text-text-muted">{ex.higherIsBetter ? '↑ higher' : '↓ lower'}</span>
+                          </div>
+                        </div>
+                        {ex.hasNotes && val && (
+                          <div className="ml-40 pl-3">
+                            <input type="text" value={exerciseNotes[ex.key] ?? ''} onChange={e => setExerciseNotes(n => ({ ...n, [ex.key]: e.target.value }))} placeholder={ex.notesPlaceholder ?? 'Notes…'} className="w-full text-xs bg-bg-main border border-border-light rounded-lg px-3 py-1.5 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand transition-colors" />
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+                <hr className="border-border-light" />
+                <div>
+                  <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">General Notes</label>
+                  <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Any observations, conditions, or context…" className="w-full text-sm bg-bg-main border border-border-light rounded-lg px-3 py-2 text-text-primary placeholder:text-text-secondary focus:outline-none focus:border-brand transition-colors resize-none" />
+                </div>
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="w-full bg-brand text-white text-sm font-semibold py-2.5 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {saving ? 'Saving…' : `Save ${current.name.split(' ')[0]} →`}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
