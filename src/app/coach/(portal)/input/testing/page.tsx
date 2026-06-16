@@ -38,7 +38,9 @@ const EXERCISES: Exercise[] = [
 ];
 
 type GmMember = { id: string; name: string };
-type SavedEntry = { memberName: string; exerciseCount: number };
+
+type QueueMember = GmMember & { done: boolean };
+
 type RecentResult = {
   id: string;
   gymmaster_member_id: string;
@@ -63,16 +65,18 @@ export default function CoachTestingInputPage() {
   const [blockInput, setBlockInput] = useState("");
   const [testDate, setTestDate]     = useState(getTodayString());
 
-  // Per-member
+  // Member queue (pre-selected at session setup)
+  const [queueSearch, setQueueSearch]   = useState("");
+  const [memberQueue, setMemberQueue]   = useState<QueueMember[]>([]);
+  const [activeQueueIdx, setActiveQueueIdx] = useState(0);
+
+  // Per-member (single-member mode when no queue)
   const [selectedMemberId, setSelectedMemberId]     = useState("");
   const [selectedMemberName, setSelectedMemberName] = useState("");
   const [gmSearch, setGmSearch]                     = useState("");
   const [results, setResults]                       = useState<Partial<Record<ExerciseKey, string>>>({});
   const [exerciseNotes, setExerciseNotes]           = useState<Partial<Record<ExerciseKey, string>>>({});
   const [sessionNotes, setSessionNotes]             = useState("");
-
-  // Session log
-  const [sessionLog, setSessionLog] = useState<SavedEntry[]>([]);
 
   // UI state
   const [saving, setSaving]       = useState(false);
@@ -107,22 +111,39 @@ export default function CoachTestingInputPage() {
     if (activeView === "history") loadRecent();
   }, [activeView, loadRecent]);
 
+  // Derived: active member in queue mode
+  const isQueueMode = memberQueue.length > 0;
+  const activeMember: GmMember | null = isQueueMode
+    ? { id: memberQueue[activeQueueIdx]?.id, name: memberQueue[activeQueueIdx]?.name }
+    : selectedMemberId ? { id: selectedMemberId, name: selectedMemberName } : null;
+
+  function addToQueue(m: GmMember) {
+    if (memberQueue.some((q) => q.id === m.id)) return;
+    setMemberQueue((prev) => [...prev, { ...m, done: false }]);
+    setQueueSearch("");
+  }
+
+  function removeFromQueue(id: string) {
+    setMemberQueue((prev) => prev.filter((q) => q.id !== id));
+  }
+
   function startSession() {
     if (!blockInput.trim()) return;
     setStep(2);
-    resetMember();
-    setSessionLog([]);
+    setActiveQueueIdx(0);
+    resetInputs();
   }
 
   function endSession() {
     setStep(1);
     setBlockInput("");
     setTestDate(getTodayString());
-    setSessionLog([]);
-    resetMember();
+    setMemberQueue([]);
+    setQueueSearch("");
+    resetInputs();
   }
 
-  function resetMember() {
+  function resetInputs() {
     setSelectedMemberId("");
     setSelectedMemberName("");
     setGmSearch("");
@@ -133,7 +154,15 @@ export default function CoachTestingInputPage() {
     setJustSaved(null);
   }
 
+  function switchQueueMember(idx: number) {
+    setActiveQueueIdx(idx);
+    resetInputs();
+  }
+
   async function handleSave() {
+    const currentId   = isQueueMode ? memberQueue[activeQueueIdx]?.id   : selectedMemberId;
+    const currentName = isQueueMode ? memberQueue[activeQueueIdx]?.name : selectedMemberName;
+
     const entries = EXERCISES
       .map((ex) => {
         const raw = results[ex.key]?.trim();
@@ -148,7 +177,7 @@ export default function CoachTestingInputPage() {
       })
       .filter(Boolean);
 
-    if (!selectedMemberId) { setSaveError("Please select a member."); return; }
+    if (!currentId) { setSaveError("Please select a member."); return; }
     if (entries.length === 0) { setSaveError("Enter at least one result before saving."); return; }
 
     setSaving(true);
@@ -159,8 +188,8 @@ export default function CoachTestingInputPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          gymmaster_member_id: selectedMemberId,
-          member_name: selectedMemberName,
+          gymmaster_member_id: currentId,
+          member_name: currentName,
           tested_date: testDate,
           testing_block: blockInput.trim(),
           notes: sessionNotes.trim() || null,
@@ -173,9 +202,27 @@ export default function CoachTestingInputPage() {
         throw new Error(data.error ?? `HTTP ${res.status}`);
       }
 
-      setSessionLog((prev) => [...prev, { memberName: selectedMemberName, exerciseCount: entries.length }]);
-      setJustSaved(selectedMemberName);
-      setTimeout(() => resetMember(), 1800);
+      setJustSaved(currentName);
+
+      if (isQueueMode) {
+        // Mark this member done in the queue
+        setMemberQueue((prev) =>
+          prev.map((q, i) => (i === activeQueueIdx ? { ...q, done: true } : q))
+        );
+        // Auto-advance to next undone member after a brief pause
+        setTimeout(() => {
+          const nextIdx = memberQueue.findIndex((q, i) => i > activeQueueIdx && !q.done);
+          if (nextIdx !== -1) {
+            setActiveQueueIdx(nextIdx);
+            resetInputs();
+          } else {
+            // All done — stay, show completion state
+            setJustSaved(currentName);
+          }
+        }, 1400);
+      } else {
+        setTimeout(() => resetInputs(), 1800);
+      }
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Save failed");
     } finally {
@@ -198,6 +245,12 @@ export default function CoachTestingInputPage() {
     }
   }
 
+  const queueFilteredMembers = queueSearch.length >= 1
+    ? gmMembers
+        .filter((m) => m.name.toLowerCase().includes(queueSearch.toLowerCase()) && !memberQueue.some((q) => q.id === m.id))
+        .slice(0, 10)
+    : [];
+
   const filteredMembers = gmSearch.length >= 1
     ? gmMembers.filter((m) => m.name.toLowerCase().includes(gmSearch.toLowerCase())).slice(0, 20)
     : [];
@@ -207,6 +260,9 @@ export default function CoachTestingInputPage() {
     setSelectedMemberName(m.name);
     setGmSearch(m.name);
   }
+
+  const allQueueDone = isQueueMode && memberQueue.every((q) => q.done);
+  const doneCount    = memberQueue.filter((q) => q.done).length;
 
   return (
     <div>
@@ -264,6 +320,51 @@ export default function CoachTestingInputPage() {
                     className="w-full text-sm bg-bg-main border border-border-light rounded-lg px-3 py-2 text-text-primary focus:outline-none focus:border-brand transition-colors"
                   />
                 </div>
+
+                {/* Member queue */}
+                <div>
+                  <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">
+                    Members in this session <span className="text-text-muted font-normal normal-case tracking-normal">(optional — add now or one at a time)</span>
+                  </label>
+                  {gmLoading ? (
+                    <p className="text-xs text-text-secondary">Loading members…</p>
+                  ) : (
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={queueSearch}
+                        onChange={(e) => setQueueSearch(e.target.value)}
+                        placeholder="Search and add members…"
+                        className="w-full text-sm bg-bg-main border border-border-light rounded-lg px-3 py-2 text-text-primary placeholder:text-text-secondary focus:outline-none focus:border-brand transition-colors"
+                      />
+                      {queueSearch.length >= 1 && (
+                        <ul className="absolute z-10 top-full left-0 right-0 mt-1 border border-border-light rounded-xl overflow-hidden divide-y divide-border-light max-h-48 overflow-y-auto bg-bg-card shadow-lg">
+                          {queueFilteredMembers.length === 0 ? (
+                            <li className="px-4 py-3 text-sm text-text-secondary">No members found</li>
+                          ) : queueFilteredMembers.map((m) => (
+                            <li key={m.id}>
+                              <button type="button" onClick={() => addToQueue(m)} className="w-full text-left px-4 py-2.5 text-sm text-text-primary hover:bg-bg-main transition-colors">
+                                {m.name}
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+
+                  {memberQueue.length > 0 && (
+                    <ul className="mt-2 space-y-1">
+                      {memberQueue.map((m) => (
+                        <li key={m.id} className="flex items-center justify-between bg-bg-main border border-border-light rounded-lg px-3 py-1.5">
+                          <span className="text-sm text-text-primary">{m.name}</span>
+                          <button onClick={() => removeFromQueue(m.id)} className="text-text-muted hover:text-status-red transition-colors text-lg leading-none">×</button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
                 <button
                   onClick={startSession}
                   disabled={!blockInput.trim()}
@@ -287,9 +388,9 @@ export default function CoachTestingInputPage() {
                       {new Date(testDate + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                     </span>
                   </p>
-                  {sessionLog.length > 0 && (
-                    <p className="text-xs text-status-green mt-0.5">
-                      ✓ {sessionLog.length} member{sessionLog.length !== 1 ? "s" : ""} saved this session
+                  {isQueueMode && (
+                    <p className="text-xs text-text-secondary mt-0.5">
+                      {doneCount}/{memberQueue.length} members saved
                     </p>
                   )}
                 </div>
@@ -301,26 +402,41 @@ export default function CoachTestingInputPage() {
                 </button>
               </div>
 
-              {/* Session log */}
-              {sessionLog.length > 0 && (
-                <div className="bg-bg-card border border-border-light rounded-xl overflow-hidden">
-                  <div className="px-5 py-3 border-b border-border-light">
-                    <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Saved this session</p>
-                  </div>
-                  <div className="divide-y divide-border-light">
-                    {sessionLog.map((entry, i) => (
-                      <div key={i} className="px-5 py-2.5 flex items-center justify-between">
-                        <span className="text-sm text-text-primary">{entry.memberName}</span>
-                        <span className="text-xs text-text-secondary">{entry.exerciseCount} exercise{entry.exerciseCount !== 1 ? "s" : ""}</span>
-                      </div>
-                    ))}
-                  </div>
+              {/* Queue member tabs */}
+              {isQueueMode && (
+                <div className="flex gap-2 flex-wrap">
+                  {memberQueue.map((m, i) => (
+                    <button
+                      key={m.id}
+                      onClick={() => switchQueueMember(i)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium border transition-colors ${
+                        i === activeQueueIdx
+                          ? "bg-brand/10 text-brand border-brand/30"
+                          : m.done
+                          ? "bg-status-green/10 text-status-green border-status-green/20"
+                          : "bg-bg-card text-text-secondary border-border-light hover:text-text-primary"
+                      }`}
+                    >
+                      {m.done && <span>✓</span>}
+                      {m.name.split(" ")[0]}
+                    </button>
+                  ))}
                 </div>
               )}
 
-              {justSaved && (
+              {/* All done banner */}
+              {allQueueDone && (
+                <div className="bg-status-green/10 border border-status-green/20 text-status-green rounded-xl px-5 py-3 text-sm font-medium flex items-center justify-between">
+                  <span>✓ All {memberQueue.length} members saved!</span>
+                  <button onClick={endSession} className="text-xs bg-status-green text-white px-3 py-1.5 rounded-lg font-semibold hover:opacity-90 transition-opacity">
+                    End Session
+                  </button>
+                </div>
+              )}
+
+              {justSaved && !allQueueDone && (
                 <div className="bg-status-green/10 border border-status-green/20 text-status-green rounded-xl px-5 py-3 text-sm font-medium">
-                  ✓ {justSaved} saved — ready for next member
+                  ✓ {justSaved} saved{isQueueMode ? " — moving to next member" : " — ready for next member"}
                 </div>
               )}
 
@@ -330,40 +446,51 @@ export default function CoachTestingInputPage() {
                 </div>
               )}
 
-              {!justSaved && (
+              {!allQueueDone && (
                 <div className="bg-bg-card border border-border-light rounded-2xl shadow-sm relative overflow-hidden">
                   <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-brand via-brand-light to-transparent" />
 
-                  <div className="px-6 py-5 border-b border-border-light">
-                    <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">Member</label>
-                    {gmLoading ? (
-                      <p className="text-sm text-text-secondary">Loading members…</p>
-                    ) : (
-                      <>
-                        <input
-                          type="text"
-                          value={gmSearch}
-                          onChange={(e) => { setGmSearch(e.target.value); setSelectedMemberId(""); setSelectedMemberName(""); }}
-                          placeholder="Search member name…"
-                          className="w-full text-sm bg-bg-main border border-border-light rounded-lg px-3 py-2 text-text-primary placeholder:text-text-secondary focus:outline-none focus:border-brand transition-colors mb-2"
-                        />
-                        {gmSearch.length >= 1 && !selectedMemberId && (
-                          <ul className="border border-border-light rounded-xl overflow-hidden divide-y divide-border-light max-h-52 overflow-y-auto">
-                            {filteredMembers.length === 0 ? (
-                              <li className="px-4 py-3 text-sm text-text-secondary">No members found</li>
-                            ) : filteredMembers.map((m) => (
-                              <li key={m.id}>
-                                <button type="button" onClick={() => selectMember(m)} className="w-full text-left px-4 py-2.5 text-sm text-text-primary hover:bg-bg-main transition-colors">
-                                  {m.name}
-                                </button>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                        {selectedMemberId && <p className="text-xs text-status-green font-medium">✓ {gmSearch}</p>}
-                      </>
-                    )}
-                  </div>
+                  {/* Member selector — only shown in single-member mode */}
+                  {!isQueueMode && (
+                    <div className="px-6 py-5 border-b border-border-light">
+                      <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">Member</label>
+                      {gmLoading ? (
+                        <p className="text-sm text-text-secondary">Loading members…</p>
+                      ) : (
+                        <>
+                          <input
+                            type="text"
+                            value={gmSearch}
+                            onChange={(e) => { setGmSearch(e.target.value); setSelectedMemberId(""); setSelectedMemberName(""); }}
+                            placeholder="Search member name…"
+                            className="w-full text-sm bg-bg-main border border-border-light rounded-lg px-3 py-2 text-text-primary placeholder:text-text-secondary focus:outline-none focus:border-brand transition-colors mb-2"
+                          />
+                          {gmSearch.length >= 1 && !selectedMemberId && (
+                            <ul className="border border-border-light rounded-xl overflow-hidden divide-y divide-border-light max-h-52 overflow-y-auto">
+                              {filteredMembers.length === 0 ? (
+                                <li className="px-4 py-3 text-sm text-text-secondary">No members found</li>
+                              ) : filteredMembers.map((m) => (
+                                <li key={m.id}>
+                                  <button type="button" onClick={() => selectMember(m)} className="w-full text-left px-4 py-2.5 text-sm text-text-primary hover:bg-bg-main transition-colors">
+                                    {m.name}
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                          {selectedMemberId && <p className="text-xs text-status-green font-medium">✓ {gmSearch}</p>}
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Queue member header */}
+                  {isQueueMode && memberQueue[activeQueueIdx] && (
+                    <div className="px-6 py-4 border-b border-border-light">
+                      <p className="text-xs text-text-secondary uppercase tracking-wider font-semibold mb-0.5">Entering results for</p>
+                      <p className="font-semibold text-text-primary">{memberQueue[activeQueueIdx].name}</p>
+                    </div>
+                  )}
 
                   <div className="px-6 py-5 space-y-4">
                     <p className="text-xs text-text-secondary">Leave blank for exercises not tested.</p>
@@ -421,10 +548,15 @@ export default function CoachTestingInputPage() {
 
                     <button
                       onClick={handleSave}
-                      disabled={saving || !selectedMemberId}
+                      disabled={saving || (!isQueueMode && !selectedMemberId)}
                       className="w-full bg-brand text-white text-sm font-semibold py-2.5 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
                     >
-                      {saving ? "Saving…" : "Save & Next Member →"}
+                      {saving
+                        ? "Saving…"
+                        : isQueueMode
+                        ? `Save ${memberQueue[activeQueueIdx]?.name.split(" ")[0]} →`
+                        : "Save & Next Member →"
+                      }
                     </button>
                   </div>
                 </div>
@@ -438,7 +570,7 @@ export default function CoachTestingInputPage() {
       {activeView === "history" && (
         <div className="max-w-2xl">
           <div className="flex items-center justify-between mb-4">
-            <p className="text-sm text-text-secondary">Last 50 results. Hover a row to reveal the delete button.</p>
+            <p className="text-sm text-text-secondary">Last 50 results.</p>
             <button onClick={loadRecent} className="text-xs text-brand hover:opacity-80 transition-opacity font-medium">
               Refresh
             </button>

@@ -10,7 +10,7 @@ type Exercise = {
   name: string
   unit: string
   higherIsBetter: boolean
-  hasNotes: boolean        // AMRAP + Time Trial need equipment notes
+  hasNotes: boolean
   notesPlaceholder?: string
   placeholder: string
 }
@@ -45,8 +45,135 @@ function formatDate(d: string) {
   return new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+function formatDateShort(d: string) {
+  return new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+}
+
 function todayISO() {
   return new Date().toISOString().slice(0, 10)
+}
+
+// ── Trend chart ────────────────────────────────────────────────────────────────
+
+interface TrendChartProps {
+  results: StrengthResult[]    // newest-first; will be reversed inside
+  exercise: Exercise
+  pbId: string | undefined
+}
+
+function TrendChart({ results, exercise, pbId }: TrendChartProps) {
+  const sorted = [...results].sort((a, b) => a.tested_date.localeCompare(b.tested_date))
+  if (sorted.length < 2) {
+    return (
+      <p className="text-xs text-text-secondary text-center py-6">
+        Need at least 2 results to show a trend.
+      </p>
+    )
+  }
+
+  const W = 320, H = 120, PX = 8, PY = 16
+  const pw = W - PX * 2
+  const ph = H - PY * 2
+
+  const values = sorted.map(r => r.result_value)
+  const minV = Math.min(...values)
+  const maxV = Math.max(...values)
+  const range = maxV - minV || 1
+
+  const pts = sorted.map((r, i) => {
+    const x = PX + (i / (sorted.length - 1)) * pw
+    const norm = (r.result_value - minV) / range
+    const y = exercise.higherIsBetter
+      ? PY + ph - norm * ph
+      : PY + norm * ph
+    return { x, y, r }
+  })
+
+  const polyline = pts.map(p => `${p.x},${p.y}`).join(' ')
+
+  // Y-axis labels: min and max
+  const topLabel  = exercise.higherIsBetter ? formatValue(maxV, exercise.unit) : formatValue(minV, exercise.unit)
+  const botLabel  = exercise.higherIsBetter ? formatValue(minV, exercise.unit) : formatValue(maxV, exercise.unit)
+
+  return (
+    <div>
+      <div className="flex justify-between text-[10px] text-text-secondary mb-0.5 px-1">
+        <span>{topLabel}</span>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 120 }}>
+        {/* Grid lines */}
+        {[0, 0.5, 1].map(t => (
+          <line
+            key={t}
+            x1={PX} y1={PY + t * ph} x2={W - PX} y2={PY + t * ph}
+            stroke="currentColor" strokeOpacity="0.08" strokeWidth="1"
+            className="text-text-secondary"
+          />
+        ))}
+
+        {/* Trend line */}
+        <polyline
+          points={polyline}
+          fill="none"
+          stroke="var(--color-brand, #14b8a6)"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+
+        {/* Data points */}
+        {pts.map((p, i) => {
+          const isPB = p.r.id === pbId
+          return (
+            <g key={i}>
+              <circle
+                cx={p.x} cy={p.y}
+                r={isPB ? 5 : 3.5}
+                fill={isPB ? 'var(--color-status-green, #22c55e)' : 'var(--color-brand, #14b8a6)'}
+                stroke="var(--color-bg-card, #1e2a2a)"
+                strokeWidth="1.5"
+              />
+              {isPB && (
+                <text x={p.x} y={p.y - 9} textAnchor="middle" fontSize="8" fill="var(--color-status-green, #22c55e)" fontWeight="bold">PB</text>
+              )}
+            </g>
+          )
+        })}
+      </svg>
+      <div className="flex justify-between text-[10px] text-text-secondary mt-0.5 px-1">
+        <span>{botLabel}</span>
+      </div>
+
+      {/* X axis dates */}
+      <div className="flex justify-between text-[10px] text-text-muted mt-1 px-1">
+        <span>{formatDateShort(sorted[0].tested_date)}</span>
+        {sorted.length > 2 && <span className="text-center flex-1 text-center">← {sorted.length} tests →</span>}
+        <span>{formatDateShort(sorted[sorted.length - 1].tested_date)}</span>
+      </div>
+
+      {/* All results table */}
+      <div className="mt-4 border border-border-light rounded-xl overflow-hidden">
+        <div className="divide-y divide-border-light">
+          {[...sorted].reverse().map((r, i) => {
+            const isPB = r.id === pbId
+            return (
+              <div key={r.id} className={`flex items-center justify-between px-4 py-2 ${i === 0 ? 'bg-bg-main' : ''}`}>
+                <span className="text-xs text-text-secondary">{formatDate(r.tested_date)}</span>
+                <div className="flex items-center gap-2">
+                  {isPB && results.length > 1 && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-status-green/10 text-status-green border border-status-green/20 font-semibold">PB</span>
+                  )}
+                  <span className={`font-data text-sm font-semibold ${i === 0 ? 'text-brand' : 'text-text-primary'}`}>
+                    {formatValue(r.result_value, exercise.unit)}
+                  </span>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 // ── Per-exercise card ──────────────────────────────────────────────────────────
@@ -59,7 +186,7 @@ interface CardProps {
 
 function ExerciseCard({ exercise, results, isLoggedIn }: CardProps) {
   const router = useRouter()
-  const [showForm, setShowForm] = useState(false)
+  const [view, setView] = useState<'data' | 'trend' | 'form'>('data')
   const [value, setValue] = useState('')
   const [notes, setNotes] = useState('')
   const [date, setDate] = useState(todayISO())
@@ -94,7 +221,7 @@ function ExerciseCard({ exercise, results, isLoggedIn }: CardProps) {
         setValue('')
         setNotes('')
         setDate(todayISO())
-        setShowForm(false)
+        setView('data')
         router.refresh()
       } else {
         const d = await res.json()
@@ -141,8 +268,8 @@ function ExerciseCard({ exercise, results, isLoggedIn }: CardProps) {
           </div>
         </div>
 
-        {/* History row */}
-        {results.length > 0 && (
+        {/* Mini history strip — only in data view */}
+        {view === 'data' && results.length > 0 && (
           <div className="flex gap-2 border-t border-border-light pt-3 mb-3 overflow-x-auto">
             {[...results].reverse().slice(-5).map((r, i, arr) => {
               const isLatestInRow = i === arr.length - 1
@@ -165,25 +292,47 @@ function ExerciseCard({ exercise, results, isLoggedIn }: CardProps) {
         )}
 
         {/* Notes display for AMRAP/Time Trial */}
-        {latest?.result_notes && (
+        {view === 'data' && latest?.result_notes && (
           <p className="text-[11px] text-text-secondary bg-bg-main rounded-lg px-3 py-1.5 mb-3 italic">
             📋 {latest.result_notes}
           </p>
         )}
 
-        {/* Add result button */}
-        {isLoggedIn && (
-          <button
-            onClick={() => setShowForm(v => !v)}
-            className="text-xs text-brand hover:text-brand-dark font-medium transition-colors"
-          >
-            {showForm ? '✕ Cancel' : '+ Add Result'}
-          </button>
-        )}
+        {/* Action row */}
+        <div className="flex items-center gap-3 border-t border-border-light pt-3">
+          {isLoggedIn && (
+            <button
+              onClick={() => setView(v => v === 'form' ? 'data' : 'form')}
+              className="text-xs text-brand hover:text-brand-dark font-medium transition-colors"
+            >
+              {view === 'form' ? '✕ Cancel' : '+ Add Result'}
+            </button>
+          )}
+          {results.length >= 2 && (
+            <button
+              onClick={() => setView(v => v === 'trend' ? 'data' : 'trend')}
+              className={`text-xs font-medium transition-colors flex items-center gap-1 ${
+                view === 'trend' ? 'text-brand' : 'text-text-secondary hover:text-text-primary'
+              }`}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+              </svg>
+              {view === 'trend' ? 'Hide trend' : 'Trend'}
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Inline form */}
-      {showForm && (
+      {/* Trend chart panel */}
+      {view === 'trend' && (
+        <div className="border-t border-border-light px-5 pb-5 pt-4 bg-bg-main/40">
+          <TrendChart results={results} exercise={exercise} pbId={pb?.id} />
+        </div>
+      )}
+
+      {/* Inline add-result form */}
+      {view === 'form' && (
         <form onSubmit={handleSubmit} className="border-t border-border-light px-5 pb-5 pt-4 space-y-3 bg-bg-main/40">
           <div className="grid grid-cols-2 gap-3">
             <div>
