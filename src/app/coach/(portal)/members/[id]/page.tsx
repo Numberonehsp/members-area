@@ -113,6 +113,15 @@ export default async function CoachMemberDetailPage({
         </h1>
       )}
 
+      <div className="mb-6">
+        <Link
+          href={`/coach/members/${id}/snapshot`}
+          className="inline-flex items-center gap-2 bg-bg-card border border-border-light hover:border-brand/40 text-text-primary text-sm font-medium px-4 py-2 rounded-xl shadow-sm transition-colors"
+        >
+          📊 View Athlete Snapshot
+        </Link>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* ── LEFT COLUMN ── */}
