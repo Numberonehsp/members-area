@@ -21,6 +21,12 @@ export default function ResultsOverviewPage() {
             title: "Strength & Conditioning",
             subtitle: "Your testing history, trends and personal bests",
           },
+          {
+            href: "/results/snapshot",
+            emoji: "📊",
+            title: "Athlete Snapshot",
+            subtitle: "Your full performance summary — body comp, strength PBs and upcoming events",
+          },
         ].map(({ href, emoji, title, subtitle }) => (
           <Link
             key={href}
