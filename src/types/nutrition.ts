@@ -49,7 +49,7 @@ export type OFFNutriments = {
 export type OFFProduct = {
   barcode: string
   name: string       // product_name from OFF
-  brand: string      // brands from OFF
+  brand: string | null  // brands from OFF, may be absent
   serving_size_g: number | null  // serving_size parsed to grams
   nutriments: OFFNutriments
 }
