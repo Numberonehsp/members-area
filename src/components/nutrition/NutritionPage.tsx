@@ -66,7 +66,7 @@ export default function NutritionPage({ initialLog, yesterdayLog, targets, weekD
     setModal('none')
   }
 
-  const modalPrefill = log ?? (isToday ? yesterdayLog : null)
+  const modalPrefill = log ?? yesterdayLog
 
   return (
     <div className="max-w-lg">
