@@ -120,7 +120,7 @@ export async function addLogItem(
     .from('nutrition_logs')
     .upsert(
       { gymmaster_member_id: gymMasterId, date, calories: 0, protein_g: 0, carbs_g: 0, fats_g: 0 },
-      { onConflict: 'gymmaster_member_id,date', ignoreDuplicates: true },
+      { onConflict: 'gymmaster_member_id,date' },
     )
     .select('id, calories, protein_g, carbs_g, fats_g')
     .single()
