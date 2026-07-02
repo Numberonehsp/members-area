@@ -28,9 +28,17 @@ function parseServingSizeGrams(raw: string | undefined): number | null {
 export async function fetchProductByBarcode(barcode: string): Promise<OFFProduct | null> {
   const url = `https://world.openfoodfacts.org/api/v2/product/${barcode}.json?fields=product_name,brands,serving_size,nutriments`
 
-  const res = await fetch(url, {
-    next: { revalidate: 86400 },  // cache for 24 hours — product data rarely changes
-  })
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 5000)
+
+  let res: Response
+  try {
+    res = await fetch(url, { signal: controller.signal, next: { revalidate: 86400 } })
+  } catch {
+    return null
+  } finally {
+    clearTimeout(timer)
+  }
 
   if (!res.ok) return null
 
