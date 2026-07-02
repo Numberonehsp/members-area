@@ -115,29 +115,19 @@ export async function addLogItem(
 ): Promise<void> {
   const supabase = client()
 
-  // Get or create the daily log
-  const { data: existing } = await supabase
+  // Upsert the daily log to avoid race conditions on concurrent requests
+  const { data: logRow, error: logError } = await supabase
     .from('nutrition_logs')
+    .upsert(
+      { gymmaster_member_id: gymMasterId, date, calories: 0, protein_g: 0, carbs_g: 0, fats_g: 0 },
+      { onConflict: 'gymmaster_member_id,date', ignoreDuplicates: true },
+    )
     .select('id, calories, protein_g, carbs_g, fats_g')
-    .eq('gymmaster_member_id', gymMasterId)
-    .eq('date', date)
     .single()
 
-  let logId: string
-  let current = { calories: 0, protein_g: 0, carbs_g: 0, fats_g: 0 }
-
-  if (existing) {
-    logId = existing.id
-    current = { calories: existing.calories, protein_g: existing.protein_g, carbs_g: existing.carbs_g, fats_g: existing.fats_g }
-  } else {
-    const { data: newLog, error } = await supabase
-      .from('nutrition_logs')
-      .insert({ gymmaster_member_id: gymMasterId, date, calories: 0, protein_g: 0, carbs_g: 0, fats_g: 0 })
-      .select('id')
-      .single()
-    if (error) throw new Error(error.message)
-    logId = newLog.id
-  }
+  if (logError) throw new Error(logError.message)
+  const logId = logRow.id
+  const current = { calories: logRow.calories, protein_g: logRow.protein_g, carbs_g: logRow.carbs_g, fats_g: logRow.fats_g }
 
   // Insert the item
   const { error: itemError } = await supabase
@@ -147,7 +137,7 @@ export async function addLogItem(
   if (itemError) throw new Error(itemError.message)
 
   // Update daily totals
-  await supabase
+  const { error: updateError } = await supabase
     .from('nutrition_logs')
     .update({
       calories:  current.calories  + item.calories,
@@ -157,4 +147,6 @@ export async function addLogItem(
       updated_at: new Date().toISOString(),
     })
     .eq('id', logId)
+
+  if (updateError) throw new Error(updateError.message)
 }
