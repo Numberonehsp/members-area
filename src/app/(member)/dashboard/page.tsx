@@ -8,9 +8,13 @@ import AwardsPreview from "@/components/dashboard/AwardsPreview";
 import GymEvents from "@/components/dashboard/GymEvents";
 import ContinueLearning from "@/components/education/ContinueLearning";
 import ActiveCard from "@/components/dashboard/ActiveCard";
+import NutritionCard from "@/components/dashboard/NutritionCard";
 import { SEED_PATHWAYS, SEED_MODULES } from "@/lib/education-seed";
 import { fetchAnnouncements } from "@/lib/staffhub";
 import { getAnnualVisits } from "@/lib/gymmaster";
+import { fetchTargets, fetchDayLog, todayISO } from "@/lib/nutrition-queries";
+import { DEFAULT_TARGETS } from "@/types/nutrition";
+import type { NutritionLog, NutritionTargets } from "@/types/nutrition";
 
 export default async function DashboardPage() {
   const cookieStore = await cookies();
@@ -27,6 +31,21 @@ export default async function DashboardPage() {
       visitsThisMonth = annual.find((m) => m.month === thisMonth)?.visitCount ?? 0;
     } catch {
       // silently ignore
+    }
+  }
+
+  // Nutrition — today's log and targets (best-effort, silently degrades)
+  let nutritionLog: NutritionLog | null = null
+  let nutritionTargets: Omit<NutritionTargets, 'id' | 'gymmaster_member_id' | 'updated_at' | 'updated_by'> = DEFAULT_TARGETS
+  if (gymMasterId) {
+    try {
+      const today = todayISO()
+      ;[nutritionLog, nutritionTargets] = await Promise.all([
+        fetchDayLog(gymMasterId, today),
+        fetchTargets(gymMasterId),
+      ])
+    } catch {
+      // silently ignore — NutritionCard degrades gracefully
     }
   }
 
@@ -82,6 +101,9 @@ export default async function DashboardPage() {
 
         {/* Personalised active card — tasks, challenges, guest sessions */}
         <ActiveCard />
+
+        {/* Nutrition summary */}
+        <NutritionCard log={nutritionLog} targets={nutritionTargets} />
 
         {/* Latest Awards */}
         <AwardsPreview />
