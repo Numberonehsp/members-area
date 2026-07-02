@@ -15,11 +15,12 @@ CREATE TABLE IF NOT EXISTS nutrition_targets (
   carbs_g              INT NOT NULL DEFAULT 200,
   fats_g               INT NOT NULL DEFAULT 65,
   if_method            TEXT CHECK (if_method IN ('16:8', '14:10', '5:2', 'none')),
-  updated_at           TIMESTAMPTZ DEFAULT now(),
+  updated_at           TIMESTAMPTZ DEFAULT now(),  -- App layer must pass updated_at on every UPDATE (no trigger installed)
   updated_by           TEXT  -- coach identifier, set in Plan 2
 );
 
 ALTER TABLE nutrition_targets ENABLE ROW LEVEL SECURITY;
+-- NOTE: Open-access policy for dev phase. Tighten to per-member access before production launch.
 CREATE POLICY "Allow all access to nutrition_targets"
   ON nutrition_targets FOR ALL USING (true) WITH CHECK (true);
 
@@ -34,11 +35,12 @@ CREATE TABLE IF NOT EXISTS nutrition_logs (
   protein_g            INT NOT NULL DEFAULT 0,
   carbs_g              INT NOT NULL DEFAULT 0,
   fats_g               INT NOT NULL DEFAULT 0,
-  updated_at           TIMESTAMPTZ DEFAULT now(),
+  updated_at           TIMESTAMPTZ DEFAULT now(),  -- App layer must pass updated_at on every UPDATE (no trigger installed)
   UNIQUE(gymmaster_member_id, date)
 );
 
 ALTER TABLE nutrition_logs ENABLE ROW LEVEL SECURITY;
+-- NOTE: Open-access policy for dev phase. Tighten to per-member access before production launch.
 CREATE POLICY "Allow all access to nutrition_logs"
   ON nutrition_logs FOR ALL USING (true) WITH CHECK (true);
 
@@ -60,6 +62,9 @@ CREATE TABLE IF NOT EXISTS nutrition_log_items (
   created_at  TIMESTAMPTZ DEFAULT now()
 );
 
+CREATE INDEX ON nutrition_log_items(log_id);
+
 ALTER TABLE nutrition_log_items ENABLE ROW LEVEL SECURITY;
+-- NOTE: Open-access policy for dev phase. Tighten to per-member access before production launch.
 CREATE POLICY "Allow all access to nutrition_log_items"
   ON nutrition_log_items FOR ALL USING (true) WITH CHECK (true);
