@@ -10,7 +10,7 @@ type Props = {
 export default function NutritionCard({ log, targets }: Props) {
   const t = targets ?? DEFAULT_TARGETS
   const calories = log?.calories ?? 0
-  const pct = Math.min(100, Math.round((calories / t.calories) * 100))
+  const pct = t.calories > 0 ? Math.min(100, Math.round((calories / t.calories) * 100)) : 0
   const hasLogged = log !== null
 
   return (
