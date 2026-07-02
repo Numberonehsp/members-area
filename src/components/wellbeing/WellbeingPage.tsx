@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useState } from 'react'
 
 type Checkin = {
@@ -97,6 +98,21 @@ export default function WellbeingPage({ checkins }: Props) {
           A quick weekly snapshot of how you're feeling. Your coaches can see this alongside your training data.
         </p>
       </div>
+
+      {/* Messages shortcut */}
+      <Link
+        href="/messages"
+        className="flex items-center justify-between bg-bg-card border border-border-light rounded-xl px-5 py-4 mb-8 hover:border-brand/40 transition-colors group"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-xl">💬</span>
+          <div>
+            <p className="text-sm font-semibold text-text-primary">Messages</p>
+            <p className="text-xs text-text-secondary">Your conversation with the coaching team</p>
+          </div>
+        </div>
+        <span className="text-text-secondary group-hover:text-brand transition-colors text-sm">→</span>
+      </Link>
 
       {/* This week's check-in */}
       {showForm ? (
