@@ -18,9 +18,10 @@ export default function PortionPicker({ product, date, onAdded, onClose }: Props
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const parsedGrams = parseFloat(customGrams)
   const quantityG = useServing && product.serving_size_g
     ? product.serving_size_g
-    : parseFloat(customGrams) || 100
+    : (isNaN(parsedGrams) || parsedGrams <= 0 ? 100 : parsedGrams)
 
   const portion = calculatePortion(product, quantityG)
 

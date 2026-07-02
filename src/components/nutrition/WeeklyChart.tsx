@@ -8,7 +8,7 @@ type Props = {
 }
 
 export default function WeeklyChart({ days, targetCalories }: Props) {
-  const maxCalories = Math.max(targetCalories * 1.2, ...days.map((d) => d.calories ?? 0))
+  const maxCalories = Math.max(1, targetCalories * 1.2, ...days.map((d) => d.calories ?? 0))
   const logged = days.filter((d) => d.calories !== null).length
   const avg = logged > 0
     ? Math.round(days.reduce((sum, d) => sum + (d.calories ?? 0), 0) / logged)

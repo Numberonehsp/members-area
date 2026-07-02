@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { NutritionLog } from '@/types/nutrition'
 
 type Props = {
@@ -21,6 +21,15 @@ export default function LogModal({ currentLog, date, onSaved, onClose }: Props) 
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setFields({
+      calories:  String(currentLog?.calories  ?? ''),
+      protein_g: String(currentLog?.protein_g ?? ''),
+      carbs_g:   String(currentLog?.carbs_g   ?? ''),
+      fats_g:    String(currentLog?.fats_g    ?? ''),
+    })
+  }, [currentLog])
 
   function update(field: keyof Fields, value: string) {
     setFields((f) => ({ ...f, [field]: value }))
