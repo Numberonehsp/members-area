@@ -13,6 +13,9 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url)
   const date = searchParams.get('date') ?? todayISO()
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return NextResponse.json({ error: 'Invalid date format' }, { status: 400 })
+  }
 
   const log = await fetchDayLog(memberId, date)
   return NextResponse.json({ log })
@@ -34,22 +37,35 @@ export async function POST(request: Request) {
   }
 
   const date = (body.date as string) ?? todayISO()
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date > todayISO()) {
+    return NextResponse.json({ error: 'Invalid or future date' }, { status: 400 })
+  }
 
   // Branch: adding an individual item (barcode scan)
   if (body.item) {
-    const item = body.item as {
-      name: string
-      calories: number
-      protein_g: number
-      carbs_g: number
-      fats_g: number
-      quantity_g: number
-      barcode: string | null
-      source: 'barcode' | 'manual'
+    const rawItem = body.item as Record<string, unknown>
+
+    if (
+      typeof rawItem.name !== 'string' || !rawItem.name.trim() ||
+      typeof rawItem.calories !== 'number' || !isFinite(rawItem.calories) ||
+      typeof rawItem.protein_g !== 'number' || !isFinite(rawItem.protein_g) ||
+      typeof rawItem.carbs_g !== 'number' || !isFinite(rawItem.carbs_g) ||
+      typeof rawItem.fats_g !== 'number' || !isFinite(rawItem.fats_g) ||
+      typeof rawItem.quantity_g !== 'number' || !isFinite(rawItem.quantity_g) ||
+      (rawItem.source !== 'barcode' && rawItem.source !== 'manual')
+    ) {
+      return NextResponse.json({ error: 'Invalid item fields' }, { status: 400 })
     }
 
-    if (!item.name || item.calories == null) {
-      return NextResponse.json({ error: 'item.name and item.calories are required' }, { status: 400 })
+    const item = {
+      name:      rawItem.name as string,
+      calories:  rawItem.calories as number,
+      protein_g: rawItem.protein_g as number,
+      carbs_g:   rawItem.carbs_g as number,
+      fats_g:    rawItem.fats_g as number,
+      quantity_g: rawItem.quantity_g as number,
+      barcode:   (rawItem.barcode as string | null) ?? null,
+      source:    rawItem.source as 'barcode' | 'manual',
     }
 
     try {
@@ -64,14 +80,19 @@ export async function POST(request: Request) {
 
   // Branch: upsert daily totals (manual entry)
   const { calories, protein_g, carbs_g, fats_g } = body as {
-    calories?: number
-    protein_g?: number
-    carbs_g?: number
-    fats_g?: number
+    calories?: unknown
+    protein_g?: unknown
+    carbs_g?: unknown
+    fats_g?: unknown
   }
 
-  if (calories == null || protein_g == null || carbs_g == null || fats_g == null) {
-    return NextResponse.json({ error: 'calories, protein_g, carbs_g, fats_g are required' }, { status: 400 })
+  if (
+    typeof calories !== 'number' || !isFinite(calories) ||
+    typeof protein_g !== 'number' || !isFinite(protein_g) ||
+    typeof carbs_g !== 'number' || !isFinite(carbs_g) ||
+    typeof fats_g !== 'number' || !isFinite(fats_g)
+  ) {
+    return NextResponse.json({ error: 'calories, protein_g, carbs_g, fats_g must be finite numbers' }, { status: 400 })
   }
 
   try {
