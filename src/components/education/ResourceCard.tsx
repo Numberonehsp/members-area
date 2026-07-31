@@ -16,7 +16,7 @@ type Props = { resource: Resource; memberPlans: string[] }
 
 export default function ResourceCard({ resource, memberPlans }: Props) {
   const plans = parseMemberPlans(memberPlans.join(','))
-  const access = canAccess(resource.required_plan, plans)
+  const access = canAccess(resource.required_plan, plans, 'resource')
   const type = TYPE_CONFIG[resource.resource_type] ?? TYPE_CONFIG.link
   const isExternal = resource.resource_type === 'video' || resource.resource_type === 'link'
 

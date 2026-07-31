@@ -51,17 +51,26 @@ export function parseMemberPlans(cookieValue: string | undefined): Set<string> {
  *
  * 'full'   — member has access
  * 'locked' — member can see the content exists but cannot open it (upgrade prompt)
- * 'hidden' — content is completely hidden (used for foundations content only)
+ * 'hidden' — content is completely hidden
+ *
+ * `kind` distinguishes two very different foundations use cases:
+ * - 'pathway'  — a foundations programme, e.g. "Foundations Recovery". Members
+ *   not on the programme should still see it exists (locked, like any other
+ *   paid pathway) so they know the content is there.
+ * - 'resource' (default) — an individual per-session PDF sent by a coach after
+ *   a specific 1-to-1 session (e.g. "Recovery 1"). These stay fully hidden
+ *   from everyone else — they're personal session materials, not a general
+ *   upgrade prompt, and showing them to non-foundations members would be
+ *   confusing (nothing to "unlock" — they were never sent that session).
  */
 export function canAccess(
   requiredPlan: EducationPlan | null | undefined,
-  memberPlans: Set<string>
+  memberPlans: Set<string>,
+  kind: 'pathway' | 'resource' = 'resource'
 ): 'full' | 'locked' | 'hidden' {
   if (!requiredPlan) return 'full'
   if (memberPlans.has(requiredPlan)) return 'full'
-  // Foundations content is hidden from non-foundations members — it's a
-  // personal programme resource, not a general upgrade prompt.
-  if (requiredPlan === 'foundations') return 'hidden'
+  if (requiredPlan === 'foundations') return kind === 'pathway' ? 'locked' : 'hidden'
   return 'locked'
 }
 

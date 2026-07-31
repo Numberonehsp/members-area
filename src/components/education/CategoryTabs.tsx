@@ -27,10 +27,11 @@ export default function CategoryTabs({ pathways, resources, memberPlans, foundat
 
   const hasFoundations = plans.has('foundations')
 
-  // Foundations content is hidden from everyone except foundations members,
-  // so exclude it from the main pathway/resource lists entirely.
-  const visiblePathways = pathways.filter(p => canAccess(p.required_plan, plans) !== 'hidden')
-  const visibleResources = resources.filter(r => canAccess(r.required_plan, plans) !== 'hidden')
+  // Foundations pathways are visible-but-locked to non-foundations members
+  // (like any other paid pathway); foundations resources (personal per-session
+  // PDFs) stay fully hidden — see canAccess() for the reasoning.
+  const visiblePathways = pathways.filter(p => canAccess(p.required_plan, plans, 'pathway') !== 'hidden')
+  const visibleResources = resources.filter(r => canAccess(r.required_plan, plans, 'resource') !== 'hidden')
 
   const filteredPathways = active === 'all'
     ? visiblePathways

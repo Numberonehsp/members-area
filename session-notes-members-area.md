@@ -278,3 +278,16 @@ src/
 - TypeScript check: `npx tsc --noEmit` before committing
 - Staff Hub app: `https://staff-hub-fawn.vercel.app/` — separate project
 - Plan docs in `docs/superpowers/plans/`, specs in `docs/superpowers/specs/`
+
+---
+
+## Session — 2026-07-21: Foundations Recovery pathway now visible-but-locked
+
+- **`canAccess()` in `lib/education-access.ts` gained a `kind: 'pathway' | 'resource'` parameter** (defaults to `'resource'`, preserving existing behaviour everywhere resources call it). Previously it returned `'hidden'` for any `required_plan === 'foundations'` content — correct for the personal per-session PDFs (Recovery 1-4, New Member FAQs — coach sends these to a specific member after a specific session, nothing to "unlock" for anyone else) but wrong for the "Foundations Recovery" **pathway**, which non-foundations members should be able to see exists (locked, same treatment as e.g. Nutrition Foundations) rather than have it vanish entirely.
+  - `kind: 'pathway'` + `required_plan: 'foundations'` → `'locked'` (visible, non-clickable card, "Available with Foundations Programme membership")
+  - `kind: 'resource'` (default) + `required_plan: 'foundations'` → unchanged, `'hidden'`
+  - Updated all pathway-checking call sites to pass `'pathway'`: `education/page.tsx`, `CategoryTabs.tsx` (`visiblePathways`), `PathwayCard.tsx`, `pathway/[id]/page.tsx` (×2), `module/[id]/page.tsx`. Resource call sites (`CategoryTabs.tsx` `visibleResources`, `ResourceCard.tsx`) now pass `'resource'` explicitly for clarity — behaviour unchanged.
+- **Fixed two pre-existing hardcoded "Perform membership required" / "Perform+" strings** (`pathway/[id]/page.tsx`, `module/[id]/page.tsx`) that would have been wrong the first time someone hit a locked module in the newly-locked Foundations Recovery pathway — now uses `upgradePlanLabel(pathway.required_plan)` so the copy matches whichever plan is actually required.
+- **Verified locally** by setting `gymmaster_token`/`gymmaster_plans` cookies directly in the browser (the `proxy.ts` route guard only checks presence of `gymmaster_token`, not validity, so this is a legitimate way to test member-facing pages without a real GymMaster login): confirmed a `gym-only` member sees "Foundations Recovery" as a locked card (identical treatment to how gym-only members see Nutrition Foundations), the personal Recovery 1-4/FAQ resources stay absent from Open Library, and a `foundations` member still gets full pathway access + the dedicated "Foundations Programme" resources section as before.
+- Build clean, lint identical to baseline (9336 problems before/after — this repo's lint includes `.worktrees/` and `.next/` build output in its glob, so the raw count is not a useful signal; confirmed via direct grep on touched files instead of full-repo comparison).
+- **Fragility note:** `staff-hub`'s WhatsApp recovery-guide message templates (see staff-hub session notes) now link directly to this pathway via its Supabase row id (`e1498faf-4a3d-4848-95c8-8df9eeb0ebd9`). If "Foundations Recovery" is ever deleted and recreated in the coach portal's Content manager, that id changes and the staff-hub link needs updating to match.

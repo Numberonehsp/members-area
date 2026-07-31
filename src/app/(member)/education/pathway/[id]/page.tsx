@@ -5,6 +5,7 @@ import { cookies } from 'next/headers'
 import { createClient } from '@supabase/supabase-js'
 import { SEED_PATHWAYS, SEED_MODULES, getPathwayProgress } from '@/lib/education-seed'
 import { notFound } from 'next/navigation'
+import { upgradePlanLabel } from '@/lib/education-access'
 import type { Pathway, Module } from '@/types/education'
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -124,13 +125,13 @@ export default async function PathwayDetailPage({
       </div>
 
       {/* Notice when member can see this pathway but modules 2+ are locked */}
-      {pathway.required_plan && canAccess(pathway.required_plan, memberPlans) === 'locked' && (
+      {pathway.required_plan && canAccess(pathway.required_plan, memberPlans, 'pathway') === 'locked' && (
         <div className="bg-status-amber/10 border border-status-amber/30 rounded-xl p-4 mb-6 flex items-start gap-3">
           <span className="text-xl mt-0.5">⭐</span>
           <div>
             <p className="text-sm font-semibold text-text-primary mb-0.5">First module free</p>
             <p className="text-xs text-text-secondary leading-relaxed">
-              Module 1 of every pathway is included with your membership. Upgrade to access the full pathway and resource library.
+              Module 1 of every pathway is included with your membership. Full access requires {pathway.required_plan ? upgradePlanLabel(pathway.required_plan) : 'a membership upgrade'}.
             </p>
           </div>
         </div>
@@ -143,7 +144,7 @@ export default async function PathwayDetailPage({
           .map((module, idx) => {
             const membershipLocked =
               !!pathway.required_plan &&
-              canAccess(pathway.required_plan, memberPlans) === 'locked' &&
+              canAccess(pathway.required_plan, memberPlans, 'pathway') === 'locked' &&
               module.module_order > 1
             const isLocked = membershipLocked || module.is_locked
             const status = isLocked ? 'not_started' : (module.progress_status ?? 'not_started')
@@ -153,7 +154,7 @@ export default async function PathwayDetailPage({
               <div key={module.id}>
                 {isLocked ? (
                   <div className={`bg-bg-card border border-border-light rounded-xl p-4 cursor-not-allowed ${membershipLocked ? 'opacity-60' : 'opacity-50'}`}>
-                    <ModuleRow module={module} idx={idx} cfg={cfg} locked membershipLocked={membershipLocked} />
+                    <ModuleRow module={module} idx={idx} cfg={cfg} locked membershipLocked={membershipLocked} requiredPlan={pathway.required_plan} />
                   </div>
                 ) : (
                   <Link href={`/education/module/${module.id}`} className="group block">
@@ -177,13 +178,14 @@ export default async function PathwayDetailPage({
 }
 
 function ModuleRow({
-  module, idx, cfg, locked, membershipLocked
+  module, idx, cfg, locked, membershipLocked, requiredPlan
 }: {
   module: { title: string; description: string | null; duration_minutes: number | null; pdf_url: string | null }
   idx: number
   cfg: { icon: string; colour: string; bg: string; border: string }
   locked: boolean
   membershipLocked: boolean
+  requiredPlan?: Pathway['required_plan']
 }) {
   return (
     <div className="flex items-start gap-4">
@@ -202,7 +204,7 @@ function ModuleRow({
           <div className="flex items-center gap-2 shrink-0">
             {membershipLocked && (
               <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-status-amber/10 text-status-amber border-status-amber/30">
-                Perform+
+                {requiredPlan ? upgradePlanLabel(requiredPlan) : 'Membership'}
               </span>
             )}
             {module.pdf_url && (

@@ -21,7 +21,7 @@ export default async function EducationHubPage() {
 
   // Only show "continue" for pathways the member can actually access
   const accessiblePathways = publishedPathways.filter(
-    p => canAccess(p.required_plan, memberPlans) === 'full'
+    p => canAccess(p.required_plan, memberPlans, 'pathway') === 'full'
   )
   const inProgressPathway = accessiblePathways.find(p =>
     (p.completed_count ?? 0) > 0 && (p.completed_count ?? 0) < (p.module_count ?? 0)

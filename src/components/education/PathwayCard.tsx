@@ -20,7 +20,7 @@ type Props = { pathway: Pathway; memberPlans: string[] }
 
 export default function PathwayCard({ pathway, memberPlans }: Props) {
   const plans = parseMemberPlans(memberPlans.join(','))
-  const access = canAccess(pathway.required_plan, plans)
+  const access = canAccess(pathway.required_plan, plans, 'pathway')
   const pct = pathway.module_count
     ? Math.round(((pathway.completed_count ?? 0) / pathway.module_count) * 100)
     : 0
