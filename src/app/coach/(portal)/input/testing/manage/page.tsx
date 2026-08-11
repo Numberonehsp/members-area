@@ -17,8 +17,12 @@ const TEST_TYPES: TestType[] = [
   { name: "Clean & Jerk 1RM",  unit: "kg",   higherIsBetter: true  },
   { name: "Snatch 1RM",        unit: "kg",   higherIsBetter: true  },
   { name: "Pull Up Max Reps",  unit: "reps", higherIsBetter: true  },
+  { name: "Pull Up 3RM",       unit: "kg",   higherIsBetter: true  },
   { name: "9min AMRAP",        unit: "reps", higherIsBetter: true  },
   { name: "6min Time Trial",   unit: "m",    higherIsBetter: true  },
+  { name: "Watt Bike 6min",    unit: "m",    higherIsBetter: true  },
+  { name: "Assault Bike 6min", unit: "m",    higherIsBetter: true  },
+  { name: "Row/Ski 6min",      unit: "m",    higherIsBetter: true  },
   { name: "5km Run",           unit: "min",  higherIsBetter: false },
   { name: "10km Run",          unit: "min",  higherIsBetter: false },
 ];

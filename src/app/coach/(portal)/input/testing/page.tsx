@@ -9,8 +9,12 @@ type ExerciseKey =
   | "clean_jerk_1rm"
   | "snatch_1rm"
   | "pull_up_max_reps"
+  | "pull_up_3rm"
   | "nine_min_amrap"
   | "six_min_time_trial"
+  | "watt_bike_time_trial"
+  | "assault_bike_time_trial"
+  | "row_ski_time_trial"
   | "five_km_run"
   | "ten_km_run";
 
@@ -25,16 +29,20 @@ type Exercise = {
 };
 
 const EXERCISES: Exercise[] = [
-  { key: "hex_deadlift_3rm",   name: "Hex Deadlift 3RM",  unit: "kg",   higherIsBetter: true,  hasNotes: false, placeholder: "e.g. 140" },
-  { key: "back_squat_3rm",     name: "Back Squat 3RM",    unit: "kg",   higherIsBetter: true,  hasNotes: false, placeholder: "e.g. 100" },
-  { key: "bench_press_3rm",    name: "Bench Press 3RM",   unit: "kg",   higherIsBetter: true,  hasNotes: false, placeholder: "e.g. 80"  },
-  { key: "clean_jerk_1rm",     name: "Clean & Jerk 1RM",  unit: "kg",   higherIsBetter: true,  hasNotes: false, placeholder: "e.g. 70"  },
-  { key: "snatch_1rm",         name: "Snatch 1RM",        unit: "kg",   higherIsBetter: true,  hasNotes: false, placeholder: "e.g. 55"  },
-  { key: "pull_up_max_reps",   name: "Pull Up Max Reps",  unit: "reps", higherIsBetter: true,  hasNotes: false, placeholder: "e.g. 12"  },
-  { key: "nine_min_amrap",     name: "9min AMRAP",        unit: "reps", higherIsBetter: true,  hasNotes: true,  placeholder: "e.g. 87",   notesPlaceholder: "Equipment used…" },
-  { key: "six_min_time_trial", name: "6min Time Trial",   unit: "m",    higherIsBetter: true,  hasNotes: true,  placeholder: "e.g. 1450", notesPlaceholder: "Equipment used…" },
-  { key: "five_km_run",        name: "5km Run",           unit: "min",  higherIsBetter: false, hasNotes: false, placeholder: "e.g. 24.5" },
-  { key: "ten_km_run",         name: "10km Run",          unit: "min",  higherIsBetter: false, hasNotes: false, placeholder: "e.g. 52.0" },
+  { key: "hex_deadlift_3rm",        name: "Hex Deadlift 3RM",  unit: "kg",   higherIsBetter: true,  hasNotes: false, placeholder: "e.g. 140" },
+  { key: "back_squat_3rm",          name: "Back Squat 3RM",    unit: "kg",   higherIsBetter: true,  hasNotes: false, placeholder: "e.g. 100" },
+  { key: "bench_press_3rm",         name: "Bench Press 3RM",   unit: "kg",   higherIsBetter: true,  hasNotes: false, placeholder: "e.g. 80"  },
+  { key: "clean_jerk_1rm",          name: "Clean & Jerk 1RM",  unit: "kg",   higherIsBetter: true,  hasNotes: false, placeholder: "e.g. 70"  },
+  { key: "snatch_1rm",              name: "Snatch 1RM",        unit: "kg",   higherIsBetter: true,  hasNotes: false, placeholder: "e.g. 55"  },
+  { key: "pull_up_max_reps",        name: "Pull Up Max Reps",  unit: "reps", higherIsBetter: true,  hasNotes: false, placeholder: "e.g. 12"  },
+  { key: "pull_up_3rm",             name: "Pull Up 3RM",       unit: "kg",   higherIsBetter: true,  hasNotes: false, placeholder: "e.g. 15"  },
+  { key: "nine_min_amrap",          name: "9min AMRAP",        unit: "reps", higherIsBetter: true,  hasNotes: true,  placeholder: "e.g. 87",   notesPlaceholder: "Equipment used…" },
+  { key: "six_min_time_trial",      name: "6min Time Trial",   unit: "m",    higherIsBetter: true,  hasNotes: true,  placeholder: "e.g. 1450", notesPlaceholder: "Equipment used…" },
+  { key: "watt_bike_time_trial",    name: "Watt Bike 6min",    unit: "m",    higherIsBetter: true,  hasNotes: false, placeholder: "e.g. 3500" },
+  { key: "assault_bike_time_trial", name: "Assault Bike 6min", unit: "m",    higherIsBetter: true,  hasNotes: false, placeholder: "e.g. 3200" },
+  { key: "row_ski_time_trial",      name: "Row/Ski 6min",      unit: "m",    higherIsBetter: true,  hasNotes: false, placeholder: "e.g. 1800" },
+  { key: "five_km_run",             name: "5km Run",           unit: "min",  higherIsBetter: false, hasNotes: false, placeholder: "e.g. 24.5" },
+  { key: "ten_km_run",              name: "10km Run",          unit: "min",  higherIsBetter: false, hasNotes: false, placeholder: "e.g. 52.0" },
 ];
 
 type GmMember = { id: string; name: string };

@@ -22,8 +22,12 @@ const EXERCISES: Exercise[] = [
   { name: 'Clean & Jerk 1RM',  unit: 'kg',   higherIsBetter: true,  hasNotes: false, placeholder: 'e.g. 70' },
   { name: 'Snatch 1RM',        unit: 'kg',   higherIsBetter: true,  hasNotes: false, placeholder: 'e.g. 55' },
   { name: 'Pull Up Max Reps',  unit: 'reps', higherIsBetter: true,  hasNotes: false, placeholder: 'e.g. 12' },
+  { name: 'Pull Up 3RM',       unit: 'kg',   higherIsBetter: true,  hasNotes: false, placeholder: 'e.g. 15' },
   { name: '9min AMRAP',        unit: 'reps', higherIsBetter: true,  hasNotes: true,  placeholder: 'e.g. 87', notesPlaceholder: 'Equipment used, e.g. 10 cal bike, 10 wall balls, 10 box jumps' },
   { name: '6min Time Trial',   unit: 'm',    higherIsBetter: true,  hasNotes: true,  placeholder: 'e.g. 1450', notesPlaceholder: 'Equipment used, e.g. Row erg' },
+  { name: 'Watt Bike 6min',    unit: 'm',    higherIsBetter: true,  hasNotes: false, placeholder: 'e.g. 3500' },
+  { name: 'Assault Bike 6min', unit: 'm',    higherIsBetter: true,  hasNotes: false, placeholder: 'e.g. 3200' },
+  { name: 'Row/Ski 6min',      unit: 'm',    higherIsBetter: true,  hasNotes: false, placeholder: 'e.g. 1800' },
   { name: '5km Run',           unit: 'min',  higherIsBetter: false, hasNotes: false, placeholder: 'e.g. 24.5 (decimal minutes)' },
   { name: '10km Run',          unit: 'min',  higherIsBetter: false, hasNotes: false, placeholder: 'e.g. 52.0 (decimal minutes)' },
 ]
