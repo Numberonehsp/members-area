@@ -28,7 +28,7 @@ const EXERCISES: Exercise[] = [
   { key: 'assault_bike_time_trial', name: 'Assault Bike 6min',  unit: 'm',    higherIsBetter: true,  hasNotes: false, placeholder: 'e.g. 3200' },
   { key: 'row_ski_time_trial',      name: 'Row/Ski 6min',       unit: 'm',    higherIsBetter: true,  hasNotes: false, placeholder: 'e.g. 1800' },
   { key: 'five_km_run',             name: '5km Run',            unit: 'min',  higherIsBetter: false, hasNotes: false, placeholder: 'e.g. 24.5 (decimal minutes)' },
-  { key: 'ten_km_run',              name: '10km Run',            unit: 'min', higherIsBetter: false, hasNotes: false, placeholder: 'e.g. 52.0 (decimal minutes)' },
+  { key: 'ten_km_run',              name: '10km Run',           unit: 'min',  higherIsBetter: false, hasNotes: false, placeholder: 'e.g. 52.0 (decimal minutes)' },
 ]
 
 type Member = { id: string; name: string }
