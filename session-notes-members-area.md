@@ -291,3 +291,15 @@ src/
 - **Verified locally** by setting `gymmaster_token`/`gymmaster_plans` cookies directly in the browser (the `proxy.ts` route guard only checks presence of `gymmaster_token`, not validity, so this is a legitimate way to test member-facing pages without a real GymMaster login): confirmed a `gym-only` member sees "Foundations Recovery" as a locked card (identical treatment to how gym-only members see Nutrition Foundations), the personal Recovery 1-4/FAQ resources stay absent from Open Library, and a `foundations` member still gets full pathway access + the dedicated "Foundations Programme" resources section as before.
 - Build clean, lint identical to baseline (9336 problems before/after — this repo's lint includes `.worktrees/` and `.next/` build output in its glob, so the raw count is not a useful signal; confirmed via direct grep on touched files instead of full-repo comparison).
 - **Fragility note:** `staff-hub`'s WhatsApp recovery-guide message templates (see staff-hub session notes) now link directly to this pathway via its Supabase row id (`e1498faf-4a3d-4848-95c8-8df9eeb0ebd9`). If "Foundations Recovery" is ever deleted and recreated in the coach portal's Content manager, that id changes and the staff-hub link needs updating to match.
+
+---
+
+## Session — 2026-08-11: gym record test additions (mirrored from staff-hub)
+
+Added four tests to the exercise list: **Pull Up 3RM** (weighted, kg) alongside the existing bodyweight Pull Up Max Reps, and **Watt Bike 6min / Assault Bike 6min / Row-Ski 6min** alongside the existing generic 6min Time Trial. All additions, no replacements — historic results keep their card.
+
+The list is duplicated in four files here (`coach/input/strength`, `coach/input/testing` including its `ExerciseKey` union, `coach/input/testing/manage`, and `components/results/StrengthClient`) and a fifth in `staff-hub/src/lib/testTypes.ts`. All five must stay in step because `strength_results.exercise` is free text matched by literal string across both apps — a drift would silently split one exercise into two leaderboards.
+
+Keys follow the existing `six_min_time_trial` convention (`watt_bike_time_trial` etc.) rather than the spec's original `watt_bike_6min`, for consistency with what was already there.
+
+No schema change; `exercise` is a plain text column.
