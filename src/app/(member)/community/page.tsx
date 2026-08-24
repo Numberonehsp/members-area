@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { cookies } from 'next/headers'
-import { fetchChallenges, fetchAwards, fetchGymEvents, fetchMemberEvents } from '@/lib/staffhub'
+import { fetchChallenges, fetchAwards, fetchGymEvents, fetchMemberEvents, fetchMemberSignups } from '@/lib/staffhub'
+import SignUpButton from '@/components/community/SignUpButton'
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-GB', {
@@ -32,11 +33,14 @@ export default async function CommunityHubPage() {
   const cookieStore = await cookies()
   const memberId = cookieStore.get('gymmaster_member_id')?.value ?? 'seed'
 
-  const [challenges, awards, gymEvents, memberEvents] = await Promise.all([
+  const isLoggedIn = !!cookieStore.get('gymmaster_member_id')?.value
+
+  const [challenges, awards, gymEvents, memberEvents, signedUpIds] = await Promise.all([
     fetchChallenges(100),
     fetchAwards(20),
     fetchGymEvents(),
     fetchMemberEvents(memberId),
+    fetchMemberSignups(isLoggedIn ? memberId : ''),
   ])
 
   const commitmentWinners = awards.filter(a => a.award_type === 'commitment_club')
@@ -191,33 +195,62 @@ export default async function CommunityHubPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {challenges.map((challenge) => (
-              <div
-                key={challenge.id}
-                className="bg-bg-card border border-border-light rounded-2xl p-5 relative overflow-hidden shadow-sm"
-              >
-                <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-brand via-brand-light to-transparent" />
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-text-primary text-sm mb-1">{challenge.name}</h3>
-                    <p className="text-[11px] text-text-secondary mb-2">
-                      {formatDateRange(challenge.start_date, challenge.end_date)}
-                    </p>
-                    {challenge.description && (
-                      <p className="text-xs text-text-secondary leading-relaxed line-clamp-2">
-                        {challenge.description}
+            {challenges.map((challenge) => {
+              const signedUp = signedUpIds.has(challenge.id)
+              const deadlinePassed = challenge.signup_deadline
+                ? new Date(challenge.signup_deadline + 'T23:59:59') < new Date()
+                : false
+              const daysToDeadline = challenge.signup_deadline
+                ? daysUntil(challenge.signup_deadline)
+                : null
+
+              return (
+                <div
+                  key={challenge.id}
+                  className="bg-bg-card border border-border-light rounded-2xl p-5 relative overflow-hidden shadow-sm"
+                >
+                  <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-brand via-brand-light to-transparent" />
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-text-primary text-sm mb-1">{challenge.name}</h3>
+                      <p className="text-[11px] text-text-secondary mb-2">
+                        {formatDateRange(challenge.start_date, challenge.end_date)}
                       </p>
-                    )}
+                      {challenge.description && (
+                        <p className="text-xs text-text-secondary leading-relaxed line-clamp-2">
+                          {challenge.description}
+                        </p>
+                      )}
+                      {/* Sign-up urgency — only worth showing while sign-up is still open */}
+                      {!signedUp && !deadlinePassed && daysToDeadline !== null && daysToDeadline <= 14 && (
+                        <p className="text-[11px] font-semibold text-status-amber mt-2">
+                          {daysToDeadline <= 0
+                            ? '⏰ Sign-ups close today'
+                            : `⏰ Sign-ups close in ${daysToDeadline} day${daysToDeadline === 1 ? '' : 's'}`}
+                        </p>
+                      )}
+                    </div>
+                    <Link
+                      href={`/community/challenge/${challenge.id}`}
+                      className="shrink-0 text-xs font-semibold text-brand border border-brand/30 rounded-lg px-3 py-1.5 hover:bg-brand/10 transition-colors"
+                    >
+                      View →
+                    </Link>
                   </div>
-                  <Link
-                    href={`/community/challenge/${challenge.id}`}
-                    className="shrink-0 text-xs font-semibold text-brand border border-brand/30 rounded-lg px-3 py-1.5 hover:bg-brand/10 transition-colors"
-                  >
-                    View →
-                  </Link>
+
+                  {/* One-tap sign-up straight from the card — no need to open the challenge first */}
+                  <div className="mt-3">
+                    <SignUpButton
+                      challengeId={challenge.id}
+                      alreadySignedUp={signedUp}
+                      deadlinePassed={deadlinePassed}
+                      isLoggedIn={isLoggedIn}
+                      variant="compact"
+                    />
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </section>

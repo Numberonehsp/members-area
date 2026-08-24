@@ -7,7 +7,7 @@ import {
   fetchParticipantMeasurements,
   staffHubReader,
 } from '@/lib/staffhub'
-import SignUpButton from './SignUpButton'
+import SignUpButton from '@/components/community/SignUpButton'
 import TrackingGrid from './TrackingGrid'
 import InBodyForm from './InBodyForm'
 
@@ -62,6 +62,8 @@ export default async function ChallengePage({ params }: { params: Promise<{ id: 
     ? new Date(challenge.signup_deadline + 'T23:59:59') < new Date()
     : false
 
+  const canSelfSignUp = !!gymMasterId && !deadlinePassed
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
       <h1 className="text-2xl font-display font-bold text-white mb-2">{challenge.name}</h1>
@@ -83,7 +85,9 @@ export default async function ChallengePage({ params }: { params: Promise<{ id: 
         </p>
       )}
 
-      {challenge.how_to_signup && !alreadySignedUp && (
+      {/* The "how to sign up" note is only useful when the member can't just tap the
+          button below — otherwise it competes with the one-tap sign-up. */}
+      {challenge.how_to_signup && !alreadySignedUp && !canSelfSignUp && (
         <div className="bg-bg-card rounded-xl p-4 mb-6 border border-brand/20">
           <p className="text-xs text-text-muted mb-1 uppercase tracking-wide">How to sign up</p>
           <p className="text-sm text-text-secondary">{challenge.how_to_signup}</p>

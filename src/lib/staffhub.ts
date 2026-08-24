@@ -111,14 +111,20 @@ export async function fetchGymEvents(): Promise<StaffHubEvent[]> {
 /**
  * Fetch active challenges.
  * Used by ChallengesPreview on the dashboard and Community page.
+ *
+ * A challenge only shows to members while it is both flagged active in Staff Hub
+ * AND has not finished yet — so a challenge that ends drops off the member view
+ * automatically, even if staff forget to end it in Staff Hub.
  */
 export async function fetchChallenges(limit = 3): Promise<StaffHubChallenge[]> {
   if (!STAFFHUB_URL || !STAFFHUB_ANON_KEY) return []
+  const today = new Date().toISOString().split('T')[0]
   try {
     const { data, error } = await staffHubReader
       .from('challenges')
       .select('id, name, description, start_date, end_date, signup_deadline, how_to_signup, is_active')
       .eq('is_active', true)
+      .gte('end_date', today)
       .order('start_date', { ascending: true })
       .limit(limit)
     if (error) {
@@ -202,6 +208,29 @@ export async function isMemberSignedUp(challengeId: string, gymMasterId: string)
   } catch (err) {
     console.warn('[StaffHub] isMemberSignedUp threw:', err)
     return false
+  }
+}
+
+/**
+ * Fetch the set of challenge IDs this member has already signed up for.
+ * One query for the whole list — used by the Community Hub and dashboard so
+ * cards can show a "You're in" state without a round-trip per challenge.
+ */
+export async function fetchMemberSignups(gymMasterId: string): Promise<Set<string>> {
+  if (!STAFFHUB_URL || !STAFFHUB_ANON_KEY || !gymMasterId) return new Set()
+  try {
+    const { data, error } = await staffHubReader
+      .from('challenge_participants')
+      .select('challenge_id')
+      .eq('gymmaster_member_id', gymMasterId)
+    if (error) {
+      console.warn('[StaffHub] fetchMemberSignups failed:', error.message)
+      return new Set()
+    }
+    return new Set((data ?? []).map((r) => r.challenge_id as string))
+  } catch (err) {
+    console.warn('[StaffHub] fetchMemberSignups threw:', err)
+    return new Set()
   }
 }
 
@@ -488,6 +517,7 @@ export type MemberChallenge = {
  */
 export async function fetchMemberChallenges(gymMasterId: string): Promise<MemberChallenge[]> {
   if (!STAFFHUB_URL || !STAFFHUB_ANON_KEY || !gymMasterId) return []
+  const today = new Date().toISOString().split('T')[0]
   try {
     const { data, error } = await staffHubReader
       .from('challenge_participants')
@@ -498,8 +528,9 @@ export async function fetchMemberChallenges(gymMasterId: string): Promise<Member
       return []
     }
     return (data ?? [])
+      // Same rule as fetchChallenges — active in Staff Hub AND not finished yet.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .filter((row: any) => row.challenges?.is_active === true)
+      .filter((row: any) => row.challenges?.is_active === true && row.challenges?.end_date >= today)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .map((row: any) => ({
         challenge_id: row.challenge_id as string,
