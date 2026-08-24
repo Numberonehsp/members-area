@@ -110,7 +110,7 @@ export async function fetchGymEvents(): Promise<StaffHubEvent[]> {
 
 /**
  * Fetch active challenges.
- * Used by ChallengesPreview on the dashboard and Community page.
+ * Used by the Community page (dashboard shows challenges via ActiveCard instead).
  *
  * A challenge only shows to members while it is both flagged active in Staff Hub
  * AND has not finished yet — so a challenge that ends drops off the member view
