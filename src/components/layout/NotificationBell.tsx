@@ -90,7 +90,9 @@ function BellIcon({ className }: { className?: string }) {
 // Component
 // ---------------------------------------------------------------------------
 
-export default function NotificationBell() {
+export default function NotificationBell({
+  align = "left",
+}: { align?: "left" | "right" } = {}) {
   const [notifications, setNotifications] =
     useState<Notification[]>(SEED_NOTIFICATIONS);
   const [open, setOpen] = useState(false);
@@ -156,7 +158,11 @@ export default function NotificationBell() {
 
       {/* Dropdown panel */}
       {open && (
-        <div className="absolute left-0 top-11 z-[100] bg-bg-card border border-border-light rounded-2xl shadow-xl w-80 max-h-96 overflow-y-auto">
+        <div
+          className={`absolute ${
+            align === "right" ? "right-0" : "left-0"
+          } top-11 z-[100] bg-bg-card border border-border-light rounded-2xl shadow-xl w-80 max-w-[calc(100vw-2rem)] max-h-96 overflow-y-auto`}
+        >
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border-light sticky top-0 bg-bg-card rounded-t-2xl">
             <span className="text-sm font-display text-text-primary">

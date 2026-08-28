@@ -317,11 +317,11 @@ export default async function CommunityHubPage() {
         )}
       </section>
 
-      {/* ── Partners & Discounts ─────────────────────────────────────────── */}
+      {/* Partners & Discounts */}
       <section>
         <div className="mb-3">
           <p className="text-[10px] tracking-[0.2em] uppercase text-brand font-semibold mb-0.5">Perks</p>
-          <h2 className="font-semibold text-text-primary">Partners &amp; Discounts</h2>
+          <h2 className="font-semibold text-text-primary">Partners & Discounts</h2>
         </div>
 
         <Link

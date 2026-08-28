@@ -36,12 +36,13 @@ export default function MemberMobileHeader() {
         </Link>
 
         <div className="relative flex items-center gap-1" ref={menuRef}>
-          <NotificationBell />
+          <NotificationBell align="right" />
 
           <button
             type="button"
             onClick={() => setMenuOpen((o) => !o)}
             aria-label="Account menu"
+            aria-haspopup="menu"
             aria-expanded={menuOpen}
             className="p-2 text-text-on-dark/80 hover:text-text-on-dark"
           >

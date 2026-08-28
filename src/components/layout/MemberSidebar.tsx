@@ -6,15 +6,15 @@ import NotificationBell from "@/components/layout/NotificationBell";
 import LogoutButton from "@/components/layout/LogoutButton";
 import { MEMBER_NAV_ITEMS, isNavItemActive } from "@/components/layout/navItems";
 
-const SIDEBAR_ICONS: Record<
-  string,
-  (props: React.SVGProps<SVGSVGElement>) => React.ReactElement
-> = {
+const SIDEBAR_ICONS = {
   "/dashboard": HomeIcon,
   "/education": BookIcon,
   "/results": ChartIcon,
   "/community": UsersIcon,
-};
+} satisfies Record<
+  (typeof MEMBER_NAV_ITEMS)[number]["href"],
+  (props: React.SVGProps<SVGSVGElement>) => React.ReactElement
+>;
 
 export default function MemberSidebar() {
   const pathname = usePathname();

@@ -4,12 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MEMBER_NAV_ITEMS, isNavItemActive } from "@/components/layout/navItems";
 
-const TAB_EMOJI: Record<string, string> = {
+const TAB_EMOJI = {
   "/dashboard": "🏠",
   "/education": "📚",
   "/results": "📊",
   "/community": "🏆",
-};
+} satisfies Record<(typeof MEMBER_NAV_ITEMS)[number]["href"], string>;
 
 export default function MemberMobileNav() {
   const pathname = usePathname();
