@@ -1,33 +1,59 @@
 import Link from "next/link";
 
-export default function ResultsOverviewPage() {
+const CARDS = [
+  {
+    href: "/goals",
+    emoji: "🎯",
+    title: "Goals & Events",
+    subtitle: "Your targets and upcoming event logging",
+  },
+  {
+    href: "/results/strength",
+    emoji: "🏋️",
+    title: "S&C Testing",
+    subtitle: "Your strength & conditioning testing history and PBs",
+  },
+  {
+    href: "/results/body-composition",
+    emoji: "⚖️",
+    title: "InBody / Body Composition",
+    subtitle: "Weight, muscle mass and body fat over time",
+  },
+  {
+    href: "/nutrition",
+    emoji: "🥗",
+    title: "Nutrition",
+    subtitle: "Your daily food and macro log",
+  },
+  {
+    href: "/wellbeing",
+    emoji: "💗",
+    title: "Wellbeing",
+    subtitle: "Your check-in questionnaires",
+  },
+  {
+    href: "/messages",
+    emoji: "💬",
+    title: "Messages",
+    subtitle: "Chat with your coach",
+  },
+  {
+    href: "/results/snapshot",
+    emoji: "📊",
+    title: "Athlete Snapshot",
+    subtitle: "Your full performance summary — body comp, strength PBs and upcoming events",
+  },
+];
+
+export default function TrackingHubPage() {
   return (
     <div>
       <h1 className="font-display text-5xl md:text-6xl text-text-primary leading-[0.95] mb-8">
-        My Results
+        My Tracking
       </h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">
-        {[
-          {
-            href: "/results/body-composition",
-            emoji: "⚖️",
-            title: "Body Composition",
-            subtitle: "Track your weight, muscle mass and body fat over time",
-          },
-          {
-            href: "/results/strength",
-            emoji: "🏋️",
-            title: "Strength & Conditioning",
-            subtitle: "Your testing history, trends and personal bests",
-          },
-          {
-            href: "/results/snapshot",
-            emoji: "📊",
-            title: "Athlete Snapshot",
-            subtitle: "Your full performance summary — body comp, strength PBs and upcoming events",
-          },
-        ].map(({ href, emoji, title, subtitle }) => (
+        {CARDS.map(({ href, emoji, title, subtitle }) => (
           <Link
             key={href}
             href={href}
