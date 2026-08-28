@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { usePathname } from "next/navigation";
 import NotificationBell from "@/components/layout/NotificationBell";
+import LogoutButton from "@/components/layout/LogoutButton";
 
 const navItems = [
   { href: "/dashboard",        label: "Dashboard",       icon: HomeIcon       },
@@ -68,34 +68,6 @@ export default function MemberSidebar() {
         <LogoutButton />
       </div>
     </aside>
-  );
-}
-
-function LogoutButton() {
-  const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleLogout = async () => {
-    setIsLoading(true);
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
-      router.push("/");
-      router.refresh();
-    } catch (err) {
-      console.error("Logout failed:", err);
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <button
-      onClick={handleLogout}
-      disabled={isLoading}
-      className="w-full flex items-center gap-3 text-sm text-text-on-dark/70 hover:text-text-on-dark disabled:opacity-50"
-    >
-      <LogoutIcon className="w-5 h-5" />
-      {isLoading ? "Logging out..." : "Logout"}
-    </button>
   );
 }
 
@@ -193,15 +165,6 @@ function UserIcon(props: React.SVGProps<SVGSVGElement>) {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
       <circle cx="12" cy="7" r="4" />
-    </svg>
-  );
-}
-function LogoutIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-      <polyline points="16 17 21 12 16 7" />
-      <line x1="21" y1="12" x2="9" y2="12" />
     </svg>
   );
 }
