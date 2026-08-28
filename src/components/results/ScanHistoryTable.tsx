@@ -19,11 +19,12 @@ export default function ScanHistoryTable({ scans, canDelete }: Props) {
   const router = useRouter();
 
   async function handleDelete(id: string) {
-    await fetch("/api/inbody/member", {
+    const res = await fetch("/api/inbody/member", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),
     });
+    if (!res.ok) throw new Error("Delete failed");
     router.refresh();
   }
 

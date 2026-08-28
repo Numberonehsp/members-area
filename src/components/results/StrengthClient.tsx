@@ -246,11 +246,12 @@ function ExerciseCard({ exercise, results, isLoggedIn }: CardProps) {
   }
 
   async function handleDeleteResult(id: string) {
-    await fetch("/api/strength", {
+    const res = await fetch("/api/strength", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),
     });
+    if (!res.ok) throw new Error("Delete failed");
     router.refresh();
   }
 
@@ -313,7 +314,7 @@ function ExerciseCard({ exercise, results, isLoggedIn }: CardProps) {
 
         {/* Editable history — lets a member remove a wrong entry without needing a trend */}
         {view === 'data' && isLoggedIn && results.length > 0 && (
-          <div className="border-t border-border-light pt-3 mb-3 space-y-1">
+          <div className="border-t border-border-light pt-3 mb-3 space-y-1 max-h-44 overflow-y-auto">
             {[...results].map((r) => (
               <div key={r.id} className="flex items-center justify-between text-xs">
                 <span className="text-text-secondary">{formatDate(r.tested_date)}</span>
