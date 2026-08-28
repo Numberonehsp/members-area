@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { MEMBER_NAV_ITEMS, isNavItemActive } from "@/components/layout/navItems";
 
-const tabs = [
-  { href: "/dashboard",  label: "Home",      icon: "🏠" },
-  { href: "/education",  label: "Learn",     icon: "📚" },
-  { href: "/results",    label: "Tracking",  icon: "📊" },
-  { href: "/community",  label: "Community", icon: "🏆" },
-  { href: "/goals",      label: "Goals",     icon: "🎯" },
-];
+const TAB_EMOJI: Record<string, string> = {
+  "/dashboard": "🏠",
+  "/education": "📚",
+  "/results": "📊",
+  "/community": "🏆",
+};
 
 export default function MemberMobileNav() {
   const pathname = usePathname();
@@ -17,19 +17,18 @@ export default function MemberMobileNav() {
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-bg-sidebar text-text-on-dark border-t border-white/10 z-40 pb-[env(safe-area-inset-bottom)]">
       <ul className="flex justify-around items-stretch h-16">
-        {tabs.map(({ href, label, icon }) => {
-          const isActive =
-            pathname === href || pathname.startsWith(`${href}/`);
+        {MEMBER_NAV_ITEMS.map((item) => {
+          const isActive = isNavItemActive(pathname, item);
           return (
-            <li key={href} className="flex-1">
+            <li key={item.href} className="flex-1">
               <Link
-                href={href}
+                href={item.href}
                 className={`h-full flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors ${
                   isActive ? "text-brand" : "text-text-on-dark/70"
                 }`}
               >
-                <span className="text-lg leading-none">{icon}</span>
-                {label}
+                <span className="text-lg leading-none">{TAB_EMOJI[item.href]}</span>
+                {item.label}
               </Link>
             </li>
           );
