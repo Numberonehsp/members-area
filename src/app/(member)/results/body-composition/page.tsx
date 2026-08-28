@@ -5,6 +5,7 @@ import type { InBodyScan } from "@/lib/staffhub";
 import { getMemberMeasurements } from "@/lib/gymmaster";
 import BodyCompositionChart from "@/components/results/BodyCompositionChart";
 import AddScanForm from "@/components/results/AddScanForm";
+import ScanHistoryTable from "@/components/results/ScanHistoryTable";
 
 type DeltaDisplayProps = {
   value: number;
@@ -193,51 +194,7 @@ export default async function BodyCompositionPage() {
       {chronological.length > 0 && <BodyCompositionChart scans={scans} />}
 
       {/* Scan history table */}
-      <div className="bg-bg-card border border-border-light rounded-2xl shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-border-light">
-          <h2 className="font-semibold text-text-primary text-sm">Scan History</h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border-light bg-bg-main/50">
-                {["Date", "Weight", "SMM", "BF%", "BF Mass"].map((col) => (
-                  <th key={col} className="text-left px-4 py-3 text-xs font-semibold text-text-secondary uppercase tracking-wider">
-                    {col}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border-light">
-              {[...chronological].reverse().map((scan, i) => {
-                const isLatest = i === 0;
-                return (
-                  <tr
-                    key={scan.scan_date}
-                    className={isLatest ? "bg-brand/5" : "hover:bg-bg-main/60 transition-colors"}
-                  >
-                    <td className="px-4 py-3 font-medium text-text-primary text-xs">
-                      {formatDateLabel(scan.scan_date)}
-                      {isLatest && (
-                        <span className="ml-2 text-[10px] font-semibold text-brand bg-brand/10 px-2 py-0.5 rounded-full">
-                          Latest
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 font-data text-text-primary">{scan.weight != null ? `${scan.weight} kg` : "—"}</td>
-                    <td className="px-4 py-3 font-data text-text-primary">{scan.smm != null ? `${scan.smm} kg` : "—"}</td>
-                    <td className="px-4 py-3 font-data text-text-primary">{scan.bf_pct != null ? `${scan.bf_pct}%` : "—"}</td>
-                    <td className="px-4 py-3 font-data text-text-primary">{scan.bf_mass != null ? `${scan.bf_mass} kg` : "—"}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        <div className="px-5 py-3 border-t border-border-light">
-          <span className="text-xs text-text-secondary">{scans.length} scan{scans.length !== 1 ? "s" : ""} recorded</span>
-        </div>
-      </div>
+      <ScanHistoryTable scans={scans} canDelete={isLoggedIn} />
     </div>
   );
 }
