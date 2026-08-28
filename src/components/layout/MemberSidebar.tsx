@@ -4,17 +4,17 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import NotificationBell from "@/components/layout/NotificationBell";
 import LogoutButton from "@/components/layout/LogoutButton";
+import { MEMBER_NAV_ITEMS, isNavItemActive } from "@/components/layout/navItems";
 
-const navItems = [
-  { href: "/dashboard",        label: "Dashboard",       icon: HomeIcon       },
-  { href: "/education",        label: "Learn",           icon: BookIcon       },
-  { href: "/results",          label: "Tracking",        icon: ChartIcon      },
-  { href: "/nutrition",        label: "Nutrition",       icon: NutritionIcon  },
-  { href: "/goals",            label: "Goals",           icon: TargetIcon     },
-  { href: "/wellbeing",        label: "Wellbeing",       icon: HeartIcon      },
-  { href: "/community",        label: "Community",       icon: UsersIcon      },
-  { href: "/partners",         label: "Partners",        icon: HandshakeIcon  },
-];
+const SIDEBAR_ICONS: Record<
+  string,
+  (props: React.SVGProps<SVGSVGElement>) => React.ReactElement
+> = {
+  "/dashboard": HomeIcon,
+  "/education": BookIcon,
+  "/results": ChartIcon,
+  "/community": UsersIcon,
+};
 
 export default function MemberSidebar() {
   const pathname = usePathname();
@@ -38,12 +38,13 @@ export default function MemberSidebar() {
       </div>
 
       <nav className="flex-1 py-3">
-        {navItems.map(({ href, label, icon: Icon }) => {
-          const isActive = pathname === href || pathname.startsWith(`${href}/`);
+        {MEMBER_NAV_ITEMS.map((item) => {
+          const Icon = SIDEBAR_ICONS[item.href];
+          const isActive = isNavItemActive(pathname, item);
           return (
             <Link
-              key={href}
-              href={href}
+              key={item.href}
+              href={item.href}
               className={`flex items-center gap-3 px-6 py-3 text-sm transition-all ${
                 isActive
                   ? "bg-brand/10 text-brand border-r-2 border-brand font-semibold"
@@ -51,7 +52,7 @@ export default function MemberSidebar() {
               }`}
             >
               <Icon className="w-5 h-5" />
-              {label}
+              {item.label}
             </Link>
           );
         })}
@@ -103,60 +104,6 @@ function UsersIcon(props: React.SVGProps<SVGSVGElement>) {
       <circle cx="9" cy="7" r="4" />
       <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
       <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-    </svg>
-  );
-}
-function HandshakeIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="m11 17 2 2a1 1 0 0 0 1.4 0l5.6-5.6a2 2 0 0 0 0-2.8L17 7.6" />
-      <path d="m4 11 5.6-5.6a2 2 0 0 1 2.8 0L14 7" />
-      <path d="m6 17 3.5 3.5a1 1 0 0 0 1.4 0L13 18" />
-      <path d="m2 13 4 4" />
-    </svg>
-  );
-}
-function TrophyIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
-      <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
-      <path d="M4 22h16" />
-      <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
-      <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
-      <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
-    </svg>
-  )
-}
-function HeartIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
-    </svg>
-  )
-}
-function NutritionIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M12 2a7 7 0 0 1 7 7c0 4-3 6-5 8l-2 3-2-3c-2-2-5-4-5-8a7 7 0 0 1 7-7z" />
-      <path d="M12 6v4" />
-      <path d="M10 8h4" />
-    </svg>
-  )
-}
-function MessageIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-    </svg>
-  )
-}
-function TargetIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <circle cx="12" cy="12" r="10"/>
-      <circle cx="12" cy="12" r="6"/>
-      <circle cx="12" cy="12" r="2"/>
     </svg>
   );
 }
