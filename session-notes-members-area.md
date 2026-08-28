@@ -204,12 +204,12 @@ STAFFHUB_SUPABASE_SERVICE_ROLE_KEY   ← needed for any write operations
 ## Deferred / Next Steps
 
 1. **GymMaster measurements mapping** — visit `/results/body-composition` while logged in, check Vercel logs for `[GymMaster] measurements 200:` line, then build mapping to merge GymMaster data into body-comp page.
-2. **Add Vercel env vars to Staff Hub** — `NEXT_PUBLIC_MEMBERS_AREA_SUPABASE_URL` and `NEXT_PUBLIC_MEMBERS_AREA_SUPABASE_ANON_KEY` so `MemberMessagesWidget` works in production.
-3. **Persist goals to database** — currently only in `useState`, lost on refresh. Needs a `member_goals` Supabase table + API routes.
-4. **Staff Hub display of member events** — coaches can't yet see Event Planner entries.
-5. **Commitment Club page (live data)** — `/commitment-club` route still exists with hardcoded leaderboard. Either remove or wire up `getAllMemberVisitsThisMonth()`.
-6. **Delete/edit scan or strength result** — no edit/delete UI yet for either members or coaches.
-7. **Mobile review** — app is responsive but hasn't had a dedicated mobile pass.
+2. **Add Vercel env vars to Staff Hub** — `NEXT_PUBLIC_MEMBERS_AREA_SUPABASE_URL` and `NEXT_PUBLIC_MEMBERS_AREA_SUPABASE_ANON_KEY` so `MemberMessagesWidget` works in production. (Dashboard config, not a code change.)
+3. ~~**Persist goals to database**~~ — **DONE (earlier session):** `member_goals` table (`migrations/003_add_member_goals.sql`), full `/api/goals` GET/POST/PATCH/DELETE, `GoalsClient` fetches/saves. This note was stale.
+4. **Staff Hub display of member events** — coaches can't yet see Event Planner entries. *Work in the `staff-hub` repo, not this one.*
+5. **Commitment Club page (live data)** — BLOCKED. `getAllMemberVisitsThisMonth()` 404s against the real GymMaster API (`/member/visits?...&group_by=member` — wrong endpoint), so there's no working way to read all-member visit counts. Attempted 2026-08-28 (branch `feat/commitment-club-live-entrants`, since discarded); needs the correct GymMaster all-member-visits endpoint found first — same class as item 1. The per-member `/member/visits/monthly` endpoint that works needs each member's own login token.
+6. ~~**Delete/edit scan or strength result**~~ — **DONE 2026-08-28** (see session below). Members can delete their own strength results + InBody scans (inline confirm); coaches can delete InBody scans and edit both strength results and InBody scans (modal). Remaining gap: no *member* edit; coach edit of an InBody `scan_date` onto an existing date for that member returns 409 ("A scan already exists for that date").
+7. **Mobile review** — app is responsive but hasn't had a dedicated mobile pass. (The 2026-08-28 nav consolidation covered navigation; the rest of the pages haven't been swept.)
 
 ---
 
@@ -303,6 +303,29 @@ The list is duplicated in four files here (`coach/input/strength`, `coach/input/
 Keys follow the existing `six_min_time_trial` convention (`watt_bike_time_trial` etc.) rather than the spec's original `watt_bike_6min`, for consistency with what was already there.
 
 No schema change; `exercise` is a plain text column.
+
+---
+
+## Session — 2026-08-28: results edit & delete (branch `feat/results-edit-delete`)
+
+Spec `docs/superpowers/specs/2026-08-28-results-edit-delete-design.md`, plan `docs/superpowers/plans/2026-08-28-results-edit-delete.md`.
+
+**New API handlers** (all write to staff-hub via `staffHubWriter`; auth enforced in-route):
+- `DELETE /api/strength` and `DELETE /api/inbody/member` — member deletes their OWN row; ownership enforced by a compound `.eq('id', id).eq('gymmaster_member_id', cookieId)` filter (deleting a row that isn't yours is a silent no-op, still 200).
+- `DELETE /api/inbody` and `PATCH /api/inbody` — coach. PATCH returns **409** `{ error: 'A scan already exists for that date' }` when the edited `scan_date` hits the `inbody_scans` UNIQUE `(gymmaster_member_id, scan_date)` constraint (PG code `23505`).
+- `PATCH /api/coach/strength` — coach edit by id.
+- Strength routes answer `{ ok: true }`, inbody routes `{ success: true }` — matched each file's existing convention; callers only check `res.ok`.
+
+**Components:**
+- `src/components/results/InlineDeleteConfirm.tsx` — reusable two-step delete (`idle` trash icon → `Delete? Yes/No` → `deleting`). Used by member strength + member scans.
+- `src/components/results/ScanHistoryTable.tsx` — the body-composition Scan History table extracted to a client component so it can host the delete control (always visible per row when `canDelete`). `body-composition/page.tsx` now renders `<ScanHistoryTable scans={scans} canDelete={isLoggedIn} />` in place of the inline table. Row `key` is now `scan.id`.
+- `src/components/coach/EditStrengthResultModal.tsx` / `EditScanModal.tsx` — small centered modals (backdrop + Esc + Cancel to close), prefilled, no member picker. `exerciseOptions` passed in as `string[]` from each coach page's local `EXERCISES` list.
+
+**Strength member delete placement (important):** the delete control was first put only inside `TrendChart`'s row list, but that view needs `results.length >= 2` (both the "Trend" toggle and `TrendChart` itself early-return below 2) — so a single mistaken entry couldn't be removed. Fixed by adding a compact always-visible `date · value · 🗑️` list to each `ExerciseCard`'s **default (`data`) view** whenever the member is logged in and has ≥1 result (`741d9f8`). `TrendChart` keeps its own copy of the control (harmless — the two views are mutually exclusive).
+
+**Coach wiring:** pencil button beside the existing trash button in the recent lists on `coach/(portal)/input/{strength,testing,inbody}/page.tsx`; `input/inbody` also gained the trash/delete button it never had. Coach deletes stay confirmation-free (matches prior behaviour); only member deletes get the inline confirm. Removed a genuinely-dead `const activeMember` in `input/testing/page.tsx` to keep that file lint-clean.
+
+**Verified:** `npx tsc --noEmit` clean; `npm run build` clean. Browser: member strength delete round-trips end to end (single-result card shows the list, bin → confirm → row + DB row gone). InBody member delete + all coach flows are code/type/build-verified only (coach portal needs a login not available in this session). Pre-existing unused-var warning `maxWeight` in `body-composition/page.tsx` left untouched (not introduced here).
 
 ---
 
