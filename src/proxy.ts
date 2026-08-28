@@ -26,16 +26,24 @@ export async function proxy(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
+  const isCoach = user?.user_metadata?.role === 'coach'
+
   // ── Coach route protection ───────────────────────────────────────────────
   // /coach/* (except /coach/login) requires a Supabase session with role=coach
   if (pathname.startsWith('/coach') && pathname !== '/coach/login') {
-    if (!user) {
+    if (!isCoach) {
       return NextResponse.redirect(new URL('/coach/login', request.url))
     }
-    const role = user.user_metadata?.role
-    if (role !== 'coach') {
-      return NextResponse.redirect(new URL('/coach/login', request.url))
-    }
+  }
+
+  // ── Coach API protection ────────────────────────────────────────────────
+  // These endpoints read/write any member's records via the service-role
+  // client, so they must be coach-only. (Member InBody self-entry is a
+  // separate route, /api/inbody/member, guarded by the GymMaster cookie.)
+  const isCoachApi =
+    pathname.startsWith('/api/coach/') || pathname === '/api/inbody'
+  if (isCoachApi && !isCoach) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   // ── Member route protection ──────────────────────────────────────────────
