@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import EditStrengthResultModal from "@/components/coach/EditStrengthResultModal"
 
 // ─── Shared exercise list ─────────────────────────────────────────────────────
 
@@ -73,6 +74,7 @@ function QuickEntryTab() {
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [editing, setEditing] = useState<RecentEntry | null>(null)
 
   const exercise = EXERCISES.find(e => e.name === selectedExercise) ?? EXERCISES[0]
 
@@ -244,6 +246,16 @@ function QuickEntryTab() {
                       <td className="px-4 py-3 text-text-secondary text-xs">{entry.result_notes ?? '—'}</td>
                       <td className="px-4 py-3">
                         <button
+                          onClick={() => setEditing(entry)}
+                          className="text-text-muted hover:text-brand transition-colors mr-2"
+                          title="Edit entry"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 20h9" />
+                            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                          </svg>
+                        </button>
+                        <button
                           onClick={() => handleDelete(entry.id)}
                           disabled={deletingId === entry.id}
                           className="text-text-muted hover:text-status-red transition-colors disabled:opacity-40"
@@ -269,6 +281,21 @@ function QuickEntryTab() {
           )}
         </div>
       </div>
+
+      {editing && (
+        <EditStrengthResultModal
+          result={{
+            id: editing.id,
+            exercise: editing.exercise,
+            result_value: editing.result_value,
+            result_notes: editing.result_notes ?? null,
+            tested_date: editing.tested_date,
+          }}
+          exerciseOptions={EXERCISES.map((e) => e.name)}
+          onClose={() => setEditing(null)}
+          onSaved={loadRecentEntries}
+        />
+      )}
     </div>
   )
 }

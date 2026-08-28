@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import type { InBodyScan } from "@/lib/staffhub";
+import EditScanModal from "@/components/coach/EditScanModal";
 
 type Member = { id: string; name: string };
 
@@ -35,6 +36,8 @@ export default function CoachInBodyInputPage() {
     }
   }
   const [recentScans, setRecentScans] = useState<InBodyScan[]>([]);
+  const [editing, setEditing] = useState<InBodyScan | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [selectedMemberId, setSelectedMemberId] = useState("");
   const [scanDate, setScanDate] = useState(todayString());
@@ -47,6 +50,20 @@ export default function CoachInBodyInputPage() {
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  async function handleDelete(id: string) {
+    setDeletingId(id);
+    try {
+      const res = await fetch("/api/inbody", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      if (res.ok) setRecentScans((prev) => prev.filter((s) => s.id !== id));
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   async function loadRecentScans() {
     const res = await fetch("/api/inbody");
@@ -247,6 +264,7 @@ export default function CoachInBodyInputPage() {
                         {col}
                       </th>
                     ))}
+                    <th className="px-4 py-3" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-light">
@@ -260,6 +278,35 @@ export default function CoachInBodyInputPage() {
                       <td className="px-4 py-3 font-data text-text-primary">{scan.smm != null ? `${scan.smm} kg` : "—"}</td>
                       <td className="px-4 py-3 font-data text-text-primary">{scan.bf_pct != null ? `${scan.bf_pct}%` : "—"}</td>
                       <td className="px-4 py-3 font-data text-text-primary">{scan.bf_mass != null ? `${scan.bf_mass} kg` : "—"}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <button
+                          onClick={() => setEditing(scan)}
+                          className="text-text-muted hover:text-brand transition-colors mr-2"
+                          title="Edit scan"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 20h9" />
+                            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => handleDelete(scan.id)}
+                          disabled={deletingId === scan.id}
+                          className="text-text-muted hover:text-status-red transition-colors disabled:opacity-40"
+                          title="Delete scan"
+                        >
+                          {deletingId === scan.id ? (
+                            <span className="text-xs">…</span>
+                          ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="3 6 5 6 21 6" />
+                              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                              <path d="M10 11v6M14 11v6" />
+                              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                            </svg>
+                          )}
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -268,6 +315,22 @@ export default function CoachInBodyInputPage() {
           )}
         </div>
       </div>
+
+      {editing && (
+        <EditScanModal
+          scan={{
+            id: editing.id,
+            scan_date: editing.scan_date,
+            weight: editing.weight,
+            smm: editing.smm,
+            bf_pct: editing.bf_pct,
+            bf_mass: editing.bf_mass,
+            notes: editing.notes,
+          }}
+          onClose={() => setEditing(null)}
+          onSaved={loadRecentScans}
+        />
+      )}
     </div>
   );
 }

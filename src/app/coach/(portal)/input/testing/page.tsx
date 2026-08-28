@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import EditStrengthResultModal from "@/components/coach/EditStrengthResultModal";
 
 type ExerciseKey =
   | "hex_deadlift_3rm"
@@ -99,6 +100,7 @@ export default function CoachTestingInputPage() {
   const [recent, setRecent]               = useState<RecentResult[]>([]);
   const [recentLoading, setRecentLoading] = useState(false);
   const [deletingId, setDeletingId]       = useState<string | null>(null);
+  const [editing, setEditing]             = useState<RecentResult | null>(null);
 
   useEffect(() => {
     fetch("/api/gymmaster/members")
@@ -121,9 +123,6 @@ export default function CoachTestingInputPage() {
 
   // Derived: active member in queue mode
   const isQueueMode = memberQueue.length > 0;
-  const activeMember: GmMember | null = isQueueMode
-    ? { id: memberQueue[activeQueueIdx]?.id, name: memberQueue[activeQueueIdx]?.name }
-    : selectedMemberId ? { id: selectedMemberId, name: selectedMemberName } : null;
 
   function addToQueue(m: GmMember) {
     if (memberQueue.some((q) => q.id === m.id)) return;
@@ -607,6 +606,16 @@ export default function CoachTestingInputPage() {
                       </p>
                     </div>
                     <button
+                      onClick={() => setEditing(r)}
+                      className="text-text-muted hover:text-brand transition-colors shrink-0 p-1"
+                      title="Edit entry"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 20h9" />
+                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                      </svg>
+                    </button>
+                    <button
                       onClick={() => handleDelete(r.id)}
                       disabled={deletingId === r.id}
                       className="text-text-muted hover:text-status-red transition-colors shrink-0 disabled:opacity-40 p-1"
@@ -629,6 +638,21 @@ export default function CoachTestingInputPage() {
             </div>
           )}
         </div>
+      )}
+
+      {editing && (
+        <EditStrengthResultModal
+          result={{
+            id: editing.id,
+            exercise: editing.exercise,
+            result_value: editing.result_value,
+            result_notes: editing.result_notes ?? null,
+            tested_date: editing.tested_date,
+          }}
+          exerciseOptions={EXERCISES.map((e) => e.name)}
+          onClose={() => setEditing(null)}
+          onSaved={loadRecent}
+        />
       )}
     </div>
   );
