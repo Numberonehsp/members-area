@@ -62,6 +62,36 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ ok: true })
 }
 
+/** PATCH — coach edits an existing strength result by id */
+export async function PATCH(request: NextRequest) {
+  const body = await request.json()
+  const { id, exercise, result_value, result_notes, tested_date } = body
+
+  if (!id || !exercise || result_value == null || !tested_date) {
+    return NextResponse.json(
+      { error: 'id, exercise, result_value and tested_date are required' },
+      { status: 400 },
+    )
+  }
+
+  const { error } = await staffHubWriter
+    .from('strength_results')
+    .update({
+      exercise,
+      result_value: Number(result_value),
+      result_notes: result_notes || null,
+      tested_date,
+    })
+    .eq('id', id)
+
+  if (error) {
+    console.error('[coach/strength] update failed:', error.message)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ ok: true })
+}
+
 /** DELETE — remove a specific result row by id */
 export async function DELETE(request: NextRequest) {
   const { id } = await request.json()
