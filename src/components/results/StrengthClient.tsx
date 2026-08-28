@@ -311,6 +311,23 @@ function ExerciseCard({ exercise, results, isLoggedIn }: CardProps) {
           </div>
         )}
 
+        {/* Editable history — lets a member remove a wrong entry without needing a trend */}
+        {view === 'data' && isLoggedIn && results.length > 0 && (
+          <div className="border-t border-border-light pt-3 mb-3 space-y-1">
+            {[...results].map((r) => (
+              <div key={r.id} className="flex items-center justify-between text-xs">
+                <span className="text-text-secondary">{formatDate(r.tested_date)}</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-data font-semibold text-text-primary">
+                    {formatValue(r.result_value, exercise.unit)}
+                  </span>
+                  <InlineDeleteConfirm onConfirm={() => handleDeleteResult(r.id)} className="shrink-0" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Notes display for AMRAP/Time Trial */}
         {view === 'data' && latest?.result_notes && (
           <p className="text-[11px] text-text-secondary bg-bg-main rounded-lg px-3 py-1.5 mb-3 italic">
