@@ -303,3 +303,24 @@ The list is duplicated in four files here (`coach/input/strength`, `coach/input/
 Keys follow the existing `six_min_time_trial` convention (`watt_bike_time_trial` etc.) rather than the spec's original `watt_bike_6min`, for consistency with what was already there.
 
 No schema change; `exercise` is a plain text column.
+
+---
+
+## Session — 2026-08-28: mobile nav consolidation (branch `feat/mobile-nav-consolidation`)
+
+Spec: `docs/superpowers/specs/2026-08-28-mobile-nav-consolidation-design.md`. Plan: `docs/superpowers/plans/2026-08-28-mobile-nav-consolidation.md`. Worked on a feature branch (not `main`) at the user's request.
+
+**Problem:** the mobile bottom nav only had 5 tabs and no link at all to Nutrition / Wellbeing / Partners / Messages, and there was no mobile header, so phone users couldn't reach notifications, profile, or logout.
+
+**Change — one nav structure for both breakpoints, four destinations: Home / Learn / Tracking / Community.**
+- New `src/components/layout/navItems.ts` — single source of truth: `MEMBER_NAV_ITEMS` (href, label, `match: string[]` of owned path prefixes) + `isNavItemActive(pathname, item)`. Both the sidebar and the bottom nav consume it, so they can't drift. Tracking owns `/results /goals /nutrition /wellbeing /messages`; Community owns `/community /partners /commitment-club`. Verified in-browser: on `/nutrition` the Tracking tab highlights on both mobile and desktop; on `/partners` the Community tab does.
+- `MemberSidebar.tsx` trimmed 8 → 4 links (via the shared list); local `LogoutButton` extracted to `src/components/layout/LogoutButton.tsx` (now takes an optional `className` that replaces the default classes); 6 now-unused inline icon components deleted (this also cleared the 2 pre-existing `TrophyIcon`/`MessageIcon` unused-var warnings on that file). Sidebar label for `/dashboard` is now "Home" (was "Dashboard") to match the shared list.
+- `MemberMobileNav.tsx` rebuilt from the shared list — 4 tabs (Goals tab dropped), emoji keyed by href.
+- New `MemberMobileHeader.tsx` — `md:hidden sticky top-0`, wordmark + `<NotificationBell />` + an account-menu button opening a dropdown with Profile and `<LogoutButton />`. `sticky` (not `fixed`) so it takes layout space — no padding change needed on `<main>`. Dropdown closes on outside `pointerdown`, `Escape`, and (Profile link) on click; deliberately NO `[pathname]` effect — `react-hooks/set-state-in-effect` is an error in this repo's eslint. Rendered in `(member)/layout.tsx` between sidebar and bottom nav.
+- `/results` page rewritten from the 3-card "My Results" overview into the **"My Tracking"** hub: 7 cards → `/goals`, `/results/strength`, `/results/body-composition`, `/nutrition`, `/wellbeing`, `/messages`, `/results/snapshot` (all pre-existing routes; `/results/*` sub-pages unchanged). Same card markup as before.
+- `community/page.tsx` — added a "Partners & Discounts" teaser `<section>` at the end of the existing scroll, linking to `/partners` (no new data fetch; `fetchPartners` was considered and skipped as out of scope).
+- `/commitment-club` remains unlinked from nav, as before.
+
+**Lint baseline caveat (still true):** `npm run lint` reports ~950 errors globally because the glob includes `.worktrees/` and `.next/`. Gate per-file with `npx eslint <path>` instead — every file touched here is 0/0.
+
+**Follow-up (not done):** account-menu dropdown has `aria-label` + `aria-expanded` but no `role="menu"` / `aria-haspopup` / focus management. Usable (Tab + Escape work) but worth a polish pass.
