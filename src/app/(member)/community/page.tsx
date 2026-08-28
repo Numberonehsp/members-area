@@ -317,6 +317,33 @@ export default async function CommunityHubPage() {
         )}
       </section>
 
+      {/* ── Partners & Discounts ─────────────────────────────────────────── */}
+      <section>
+        <div className="mb-3">
+          <p className="text-[10px] tracking-[0.2em] uppercase text-brand font-semibold mb-0.5">Perks</p>
+          <h2 className="font-semibold text-text-primary">Partners &amp; Discounts</h2>
+        </div>
+
+        <Link
+          href="/partners"
+          className="group block bg-bg-card border border-border-light rounded-2xl p-5 relative overflow-hidden shadow-sm hover:border-brand/40 transition-colors"
+        >
+          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-brand via-brand-light to-transparent" />
+          <div className="flex items-center gap-4">
+            <span className="text-2xl shrink-0">🤝</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-text-primary">Member discounts with our local partners</p>
+              <p className="text-xs text-text-secondary mt-0.5">
+                Physio, nutrition, kit and more — see the current offers.
+              </p>
+            </div>
+            <span className="shrink-0 text-xs font-semibold text-brand opacity-0 group-hover:opacity-100 transition-opacity">
+              View all →
+            </span>
+          </div>
+        </Link>
+      </section>
+
     </div>
   )
 }
