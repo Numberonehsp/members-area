@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { StrengthResult } from '@/lib/staffhub'
+import InlineDeleteConfirm from "@/components/results/InlineDeleteConfirm";
 
 // ── Exercise definitions ───────────────────────────────────────────────────────
 
@@ -63,9 +64,10 @@ interface TrendChartProps {
   results: StrengthResult[]    // newest-first; will be reversed inside
   exercise: Exercise
   pbId: string | undefined
+  onDelete?: (id: string) => Promise<void>;
 }
 
-function TrendChart({ results, exercise, pbId }: TrendChartProps) {
+function TrendChart({ results, exercise, pbId, onDelete }: TrendChartProps) {
   const sorted = [...results].sort((a, b) => a.tested_date.localeCompare(b.tested_date))
   if (sorted.length < 2) {
     return (
@@ -164,12 +166,17 @@ function TrendChart({ results, exercise, pbId }: TrendChartProps) {
               <div key={r.id} className={`flex items-center justify-between px-4 py-2 ${i === 0 ? 'bg-bg-main' : ''}`}>
                 <span className="text-xs text-text-secondary">{formatDate(r.tested_date)}</span>
                 <div className="flex items-center gap-2">
-                  {isPB && results.length > 1 && (
-                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-status-green/10 text-status-green border border-status-green/20 font-semibold">PB</span>
+                  <div className="flex items-center gap-2">
+                    {isPB && results.length > 1 && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-status-green/10 text-status-green border border-status-green/20 font-semibold">PB</span>
+                    )}
+                    <span className={`font-data text-sm font-semibold ${i === 0 ? 'text-brand' : 'text-text-primary'}`}>
+                      {formatValue(r.result_value, exercise.unit)}
+                    </span>
+                  </div>
+                  {onDelete && (
+                    <InlineDeleteConfirm onConfirm={() => onDelete(r.id)} className="ml-2 shrink-0" />
                   )}
-                  <span className={`font-data text-sm font-semibold ${i === 0 ? 'text-brand' : 'text-text-primary'}`}>
-                    {formatValue(r.result_value, exercise.unit)}
-                  </span>
                 </div>
               </div>
             )
@@ -236,6 +243,15 @@ function ExerciseCard({ exercise, results, isLoggedIn }: CardProps) {
     } finally {
       setSaving(false)
     }
+  }
+
+  async function handleDeleteResult(id: string) {
+    await fetch("/api/strength", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    router.refresh();
   }
 
   const inputClass = 'w-full bg-bg-main border border-border-light rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:border-brand transition-colors'
@@ -331,7 +347,7 @@ function ExerciseCard({ exercise, results, isLoggedIn }: CardProps) {
       {/* Trend chart panel */}
       {view === 'trend' && (
         <div className="border-t border-border-light px-5 pb-5 pt-4 bg-bg-main/40">
-          <TrendChart results={results} exercise={exercise} pbId={pb?.id} />
+          <TrendChart results={results} exercise={exercise} pbId={pb?.id} onDelete={isLoggedIn ? handleDeleteResult : undefined} />
         </div>
       )}
 
