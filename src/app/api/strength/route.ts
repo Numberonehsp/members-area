@@ -34,3 +34,31 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({ success: true })
 }
+
+/** DELETE — member removes one of their OWN strength results */
+export async function DELETE(request: NextRequest) {
+  const cookieStore = await cookies()
+  const gymMasterId = cookieStore.get('gymmaster_member_id')?.value
+
+  if (!gymMasterId) {
+    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+  }
+
+  const { id } = await request.json()
+  if (!id) {
+    return NextResponse.json({ error: 'id is required' }, { status: 400 })
+  }
+
+  const { error } = await staffHubWriter
+    .from('strength_results')
+    .delete()
+    .eq('id', id)
+    .eq('gymmaster_member_id', gymMasterId)
+
+  if (error) {
+    console.error('[Strength] member delete failed:', error.message)
+    return NextResponse.json({ error: 'Failed to delete result' }, { status: 500 })
+  }
+
+  return NextResponse.json({ ok: true })
+}
