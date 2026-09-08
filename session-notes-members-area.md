@@ -379,3 +379,26 @@ Started as an `/impeccable audit` of the deployed members area. Login page audit
 **Verified:** `npx eslint` clean on all 4 files (repo-wide lint has ~hundreds of pre-existing errors from `.worktrees/`/`.next/` in the glob and unrelated `wellbeing/*` files — gate per-file). `npx tsc --noEmit` shows only 2 pre-existing errors in `education/**/[id]/page.tsx` (`Cannot find name 'PageProps'`), none in touched files. Login page changes verified in-browser on a worktree dev server (labels associated, `<main>`/`<footer>` present, focus ring visible, contrast/placeholder/eyebrow updated). Community reorder + both challenge forms are lint/type/detector-verified and reasoned-through only — the challenge pages need a member session that wasn't available this session; the InBody remount fix should be spot-checked on a phone.
 
 **Note:** `npm run dev` via the harness preview launched from the main checkout, not the worktree (multiple lockfiles). Had to run `PORT=3007 npm run dev` directly from the worktree dir to verify against the edited files.
+
+---
+
+## Session — 2026-09-08 (cont.): challenge InBody never reached body-comp history — fixed
+
+**Report:** does InBody data entered on a challenge (e.g. Back to School Reset) also land in the member's historical InBody data (Results > Body Composition)?
+
+**Answer: no, and it had been broken since 2026-05-05.** `POST /api/challenges/[id]/inbody` writes `challenge_participants` (coach sees it in Staff Hub) and is *supposed* to also mirror the pre/post values into `inbody_scans` (pre → challenge `start_date`, post → `end_date`, upsert on `gymmaster_member_id,scan_date`), which is the table `fetchMemberScans` → `/results/body-composition` reads.
+
+The mirror was dead code. The route pulls challenge dates with a to-one embed `.select('id, challenges(start_date, end_date)')`. Commit `f0988ca` ("Handle challenges as array type", May 2026) changed `const challenge = ...channels` from `.challenges` to `.challenges?.[0]` purely to silence a TS build error, guessing the embed returns an array. It returns an **object** — confirmed by `fetchMemberChallenges` in `staffhub.ts:518`, a working shipped query with the identical `challenge_participants → challenges` embed that accesses `row.challenges.name` (object, not `[0]`). So `challenge` was always `undefined` and the `if (challenge) { …inbody_scans upsert… }` block never executed.
+
+**Fix (`39fc287`, straight to `main`):** read the embed defensively and type it:
+```ts
+const challengeRel = (participant as { challenges: unknown }).challenges
+const challenge = (Array.isArray(challengeRel) ? challengeRel[0] : challengeRel) as
+  | { start_date: string; end_date: string }
+  | undefined
+```
+No other behaviour change — the mirror block itself was already correct. `npx eslint` + `npx tsc --noEmit` clean on the file. **Not runtime-verified** (needs a logged-in member who is a challenge participant + staff-hub data; not available this session). Static confidence is high because of the `fetchMemberChallenges` precedent.
+
+**Deliberately not changed:** the `upsert(..., { onConflict: 'gymmaster_member_id,scan_date' })` will overwrite a real InBody scan if one already exists on the challenge's exact start/end date. User's call: a member won't do two InBody scans in one day, so leave it.
+
+**Follow-up worth doing when a member session is available:** sign a test member into a challenge, enter pre + post InBody numbers, confirm two rows appear in `inbody_scans` (dates = challenge start/end, notes "Challenge pre-scan (auto-linked)" / "post-scan") and render in Results > Body Composition. Also worth checking historic challenges: members who entered InBody data before this fix have nothing in `inbody_scans` for it — a one-off backfill from `challenge_participants.pre_*`/`post_*` may be wanted.
