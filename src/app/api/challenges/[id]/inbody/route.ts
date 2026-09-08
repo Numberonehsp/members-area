@@ -49,7 +49,14 @@ export async function POST(
     return NextResponse.json({ error: 'Participant not found' }, { status: 403 })
   }
 
-  const challenge = (participant as any).challenges?.[0]
+  // Supabase returns this to-one embed as an object, not an array (see
+  // fetchMemberChallenges in staffhub.ts, same shape). An earlier `?.[0]`
+  // silently made `challenge` undefined, so the inbody_scans mirror below
+  // never ran. Handle both shapes defensively.
+  const challengeRel = (participant as { challenges: unknown }).challenges
+  const challenge = (Array.isArray(challengeRel) ? challengeRel[0] : challengeRel) as
+    | { start_date: string; end_date: string }
+    | undefined
 
   // Only update fields that were provided (not null/undefined)
   function val(v: unknown) {
