@@ -351,3 +351,31 @@ Spec: `docs/superpowers/specs/2026-08-28-mobile-nav-consolidation-design.md`. Pl
 **Lint baseline caveat (still true):** `npm run lint` reports ~950 errors globally because the glob includes `.worktrees/` and `.next/`. Gate per-file with `npx eslint <path>` instead — every file touched here is 0/0.
 
 **Follow-up (not done):** account-menu dropdown has `aria-label` + `aria-expanded` but no `role="menu"` / `aria-haspopup` / focus management. Usable (Tab + Escape work) but worth a polish pass.
+
+---
+
+## Session — 2026-09-08: community reorder + challenge input fixes + login a11y (branch `fix/community-inbody-login`, worktree `.worktrees/community-inbody-login`)
+
+Started as an `/impeccable audit` of the deployed members area. Login page audit only (the rest of the app is behind an auth gate in `src/proxy.ts` and no member session was available this session — `/community`, `/community/challenge/*` all 302 to `/`). Audit findings on `src/app/page.tsx` plus two user-requested changes.
+
+**1. `src/app/(member)/community/page.tsx` — Perks moved above Past Winners.** The "Partners & Discounts" `<section>` (eyebrow "Perks") was last in the scroll, below both winners lists. Moved it to sit directly after "Challenges" and before "Commitment Club" / "Athlete of the Month". Pure JSX reorder, no logic/data change.
+
+**2. `src/app/(member)/community/challenge/[id]/InBodyForm.tsx` — fixed the mobile keyboard-closing bug and enlarged the inputs.**
+- Root cause of the keyboard closing on every digit: `Row` was a component defined *inside* `InBodyForm`, so it got a fresh function identity on every keystroke-driven re-render. React then unmounted/remounted the `<tr>` + `<input>` subtree, the input lost focus, and the mobile soft keyboard dismissed. Replaced `Row` with a module-scope plain helper `metricRow(args)` that returns markup (not a component) and takes `onPre`/`onPost` callbacks; `inputClass` also hoisted to module scope. Rendering is now a stable inline `metricRow({...})` call per metric — no child component identity to churn.
+- Layout: dropped the `<table>` (it forced horizontal scroll on phones because the "Muscle (SMM) (kg)" label cell was `whitespace-nowrap` and the Pre/Post columns were `w-24` with `w-full` inputs squeezed inside). Now a stacked card per metric: label + Δ on one row, then a `grid-cols-2` of full-width Pre/Post inputs. Inputs are `h-14 text-lg text-center` with their own `<label htmlFor>`.
+- Inputs changed `type="number" step="any"` → `type="text" inputMode="decimal"` (keeps the numeric keypad, drops the spinner and iOS scroll-wheel increment; `text-lg` = 18px also avoids iOS focus-zoom). Payload to `/api/challenges/[id]/inbody` is unchanged (still strings-or-null, same keys `pre_bf_pct` etc).
+
+**3. `src/app/(member)/community/challenge/[id]/TrackingGrid.tsx` — same input treatment, table kept.** This grid legitimately has many columns (Pre + N weeks + Post) so it stays a scrolling table. Inputs went from `w-16` `px-2 py-1 text-sm` to `w-20 h-12 text-base tabular-nums`, and `type="number" step="any"` → `type="text" inputMode="decimal"`. No nested-component bug here (inputs were already inline in a `.map`), so no remount change needed.
+
+**4. `src/app/page.tsx` (login) — audit fixes.**
+- Both inputs had no `id`/`name` and the `<label>`s had no `htmlFor`, so nothing was programmatically associated (screen readers announced "edit text, blank", clicking a label didn't focus, password managers had no anchor). Added `id="login-email"`/`id="login-password"`, matching `htmlFor`, and `name="email"`/`name="password"`.
+- No landmarks at all. Wrapped the page in `<main>` (was a bare `<div>`) and made the "Queensferry · Flintshire" line a `<footer>`.
+- Focus indicator was invisible (`outline: none`, no ring). Added `focus-visible:ring-2 focus-visible:ring-brand-light focus-visible:ring-offset-2 focus-visible:ring-offset-transparent` to a shared `fieldClass`; verified a keyboard-focused input now paints a 2px teal ring at a 2px offset (`box-shadow` computed `rgb(42,154,155) 0 0 0 4px`).
+- "Coach login" link failed contrast at `text-text-on-dark/40` 12px (~2.4:1 on the dark card). Bumped to `/70` and `text-sm`, hover `text-text-on-dark`. Footer line `/40` → `/55`. Eyebrow `text-[10px]` → `text-[11px]`.
+- Password placeholder was literal bullet glyphs `••••••••` (looked pre-filled) → `"Your password"`.
+- Added `prefetch={false}` to the `/coach/login` `<Link>` (it was firing ~6 `?_rsc=` prefetches).
+- `aria-label="Members Area"` on the `<h1>` (its `MEMBERS<br><span>AREA</span>` markup produced the accessible name "MembersArea").
+
+**Verified:** `npx eslint` clean on all 4 files (repo-wide lint has ~hundreds of pre-existing errors from `.worktrees/`/`.next/` in the glob and unrelated `wellbeing/*` files — gate per-file). `npx tsc --noEmit` shows only 2 pre-existing errors in `education/**/[id]/page.tsx` (`Cannot find name 'PageProps'`), none in touched files. Login page changes verified in-browser on a worktree dev server (labels associated, `<main>`/`<footer>` present, focus ring visible, contrast/placeholder/eyebrow updated). Community reorder + both challenge forms are lint/type/detector-verified and reasoned-through only — the challenge pages need a member session that wasn't available this session; the InBody remount fix should be spot-checked on a phone.
+
+**Note:** `npm run dev` via the harness preview launched from the main checkout, not the worktree (multiple lockfiles). Had to run `PORT=3007 npm run dev` directly from the worktree dir to verify against the edited files.

@@ -130,11 +130,12 @@ export default function TrackingGrid({
                   return (
                     <td key={et.key} className="px-2 py-1.5 text-center">
                       <input
-                        type="number"
-                        step="any"
+                        type="text"
+                        inputMode="decimal"
+                        autoComplete="off"
                         value={values[key] ?? ''}
                         onChange={(e) => setValue(cat.id, et.key, e.target.value)}
-                        className="w-16 bg-bg-card border border-border-light rounded-lg px-2 py-1 text-center text-sm text-text-primary focus:outline-none focus:border-brand transition-colors"
+                        className="w-20 h-12 bg-bg-card border border-border-light rounded-lg px-2 text-center text-base tabular-nums text-text-primary focus:outline-none focus:border-brand focus-visible:ring-2 focus-visible:ring-brand/40 transition-colors"
                         placeholder="—"
                       />
                     </td>

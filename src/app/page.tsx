@@ -36,18 +36,24 @@ export default function LandingPage() {
     }
   }
 
+  const fieldClass =
+    "w-full bg-white/[0.06] border border-white/10 rounded-lg px-4 py-2.5 text-sm text-text-on-dark placeholder:text-text-on-dark/30 focus:outline-none focus:border-brand focus-visible:ring-2 focus-visible:ring-brand-light focus-visible:ring-offset-2 focus-visible:ring-offset-transparent transition-colors";
+
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-facets text-text-on-dark px-6 relative overflow-hidden">
+    <main className="min-h-screen flex flex-col items-center justify-center bg-facets text-text-on-dark px-6 relative overflow-hidden">
       {/* Soft brand glow */}
       <div className="pointer-events-none absolute -top-32 -left-32 w-96 h-96 rounded-full bg-brand/20 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-40 -right-32 w-[28rem] h-[28rem] rounded-full bg-brand-light/10 blur-3xl" />
 
       <div className="relative w-full max-w-md">
         <div className="mb-10 text-center">
-          <p className="text-[10px] tracking-[0.4em] uppercase text-brand-light mb-4">
+          <p className="text-[11px] tracking-[0.4em] uppercase text-brand-light mb-4">
             Number One · Health · Strength · Performance
           </p>
-          <h1 className="font-display text-6xl md:text-7xl leading-none mb-4">
+          <h1
+            aria-label="Members Area"
+            className="font-display text-6xl md:text-7xl leading-none mb-4"
+          >
             Members
             <br />
             <span className="text-brand">Area</span>
@@ -63,37 +69,50 @@ export default function LandingPage() {
           className="bg-white/[0.04] border border-white/10 rounded-2xl p-6 backdrop-blur-sm space-y-4"
         >
           <div>
-            <label className="block text-xs font-medium text-text-on-dark/70 mb-1.5">
+            <label
+              htmlFor="login-email"
+              className="block text-xs font-medium text-text-on-dark/80 mb-1.5"
+            >
               Email address
             </label>
             <input
+              id="login-email"
+              name="email"
               type="email"
               required
               autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
-              className="w-full bg-white/[0.06] border border-white/10 rounded-lg px-4 py-2.5 text-sm text-text-on-dark placeholder:text-text-on-dark/30 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors"
+              className={fieldClass}
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-text-on-dark/70 mb-1.5">
+            <label
+              htmlFor="login-password"
+              className="block text-xs font-medium text-text-on-dark/80 mb-1.5"
+            >
               Password
             </label>
             <input
+              id="login-password"
+              name="password"
               type="password"
               required
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="w-full bg-white/[0.06] border border-white/10 rounded-lg px-4 py-2.5 text-sm text-text-on-dark placeholder:text-text-on-dark/30 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors"
+              placeholder="Your password"
+              className={fieldClass}
             />
           </div>
 
           {error && (
-            <p className="text-sm text-status-red bg-status-red/10 border border-status-red/20 rounded-lg px-4 py-2.5">
+            <p
+              role="alert"
+              className="text-sm text-status-red bg-status-red/10 border border-status-red/20 rounded-lg px-4 py-2.5"
+            >
               {error}
             </p>
           )}
@@ -110,16 +129,17 @@ export default function LandingPage() {
         <p className="text-center mt-4">
           <Link
             href="/coach/login"
-            className="text-xs text-text-on-dark/40 hover:text-text-on-dark/70 transition-colors"
+            prefetch={false}
+            className="text-sm text-text-on-dark/70 hover:text-text-on-dark transition-colors"
           >
             Coach login →
           </Link>
         </p>
 
-        <p className="text-center text-[11px] tracking-[0.2em] uppercase text-text-on-dark/40 mt-8">
+        <footer className="text-center text-[11px] tracking-[0.2em] uppercase text-text-on-dark/55 mt-8">
           Queensferry · Flintshire
-        </p>
+        </footer>
       </div>
-    </div>
+    </main>
   );
 }
