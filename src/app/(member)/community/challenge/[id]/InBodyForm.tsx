@@ -44,7 +44,7 @@ function metricRow(args: {
       const good = label === 'Muscle (SMM)' ? diff > 0 : diff < 0
       delta = {
         text: `${diff > 0 ? '+' : ''}${diff.toFixed(1)} ${unit}`,
-        colour: good ? 'text-green-400' : 'text-red-400',
+        colour: good ? 'text-status-green' : 'text-status-red',
       }
     }
   }
