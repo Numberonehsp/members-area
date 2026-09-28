@@ -6,6 +6,7 @@ import QuickStats from "@/components/dashboard/QuickStats";
 import AttendanceStreak from "@/components/dashboard/AttendanceStreak";
 import AwardsPreview from "@/components/dashboard/AwardsPreview";
 import GymEvents from "@/components/dashboard/GymEvents";
+import Spotlight from "@/components/dashboard/Spotlight";
 import ContinueLearning from "@/components/education/ContinueLearning";
 import ActiveCard from "@/components/dashboard/ActiveCard";
 import NutritionCard from "@/components/dashboard/NutritionCard";
@@ -65,8 +66,13 @@ export default async function DashboardPage() {
 
   return (
     <div>
-      {/* Welcome */}
-      <WelcomeBanner firstName={firstName} />
+      {/* Welcome + rotating spotlight (vote reminder, events, partner perks) */}
+      <div className="md:flex md:items-start md:justify-between md:gap-6 mb-8">
+        <div className="mb-6 md:mb-0">
+          <WelcomeBanner firstName={firstName} />
+        </div>
+        <Spotlight />
+      </div>
 
       {/* Announcements — live from Staff Hub */}
       <AnnouncementBanner announcement={latestAnnouncement} />

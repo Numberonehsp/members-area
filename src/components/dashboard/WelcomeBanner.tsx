@@ -29,7 +29,7 @@ export default function WelcomeBanner({ firstName = 'there', dateOfBirth }: Prop
   })
 
   return (
-    <div className="mb-8">
+    <div>
       <p className="text-[11px] tracking-[0.3em] uppercase text-brand mb-1 font-semibold">
         {today}
       </p>

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { cookies } from 'next/headers'
 import { fetchChallenges, fetchAwards, fetchGymEvents, fetchMemberEvents, fetchMemberSignups } from '@/lib/staffhub'
+import { isVotingWindow, votingDaysLeft } from '@/lib/voting-window'
 import SignUpButton from '@/components/community/SignUpButton'
 
 function formatDate(dateStr: string): string {
@@ -42,6 +43,9 @@ export default async function CommunityHubPage() {
     fetchMemberEvents(memberId),
     fetchMemberSignups(isLoggedIn ? memberId : ''),
   ])
+
+  const votingOpen = isVotingWindow()
+  const daysLeft = votingDaysLeft()
 
   const commitmentWinners = awards.filter(a => a.award_type === 'commitment_club')
   const athleteWinners = awards.filter(a => a.award_type === 'athlete_of_month')
@@ -112,6 +116,35 @@ export default async function CommunityHubPage() {
           Community<br /><span className="text-brand">Hub</span>
         </h1>
       </div>
+
+      {/* ── Athlete of the Month: nominate ────────────────────────── */}
+      <section>
+        <Link
+          href="/community/awards"
+          className="group block bg-status-amber/10 border border-status-amber/30 rounded-2xl p-5 relative overflow-hidden shadow-sm hover:border-status-amber/60 transition-colors"
+        >
+          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-status-amber via-brand to-transparent" />
+          <div className="flex items-center gap-4">
+            <span className="text-3xl shrink-0">🏆</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] tracking-[0.2em] uppercase text-status-amber font-semibold mb-0.5">
+                {votingOpen ? 'Nominations closing soon' : 'Athlete of the Month'}
+              </p>
+              <p className="text-sm font-semibold text-text-primary">
+                Nominate this month’s Athlete of the Month
+              </p>
+              <p className="text-xs text-text-secondary mt-0.5">
+                {votingOpen
+                  ? (daysLeft === 1 ? 'Last day to nominate.' : `${daysLeft} days left to nominate.`)
+                  : 'Know someone who has trained hard? Put their name forward any time.'}
+              </p>
+            </div>
+            <span className="shrink-0 text-xs font-semibold text-status-amber">
+              Nominate →
+            </span>
+          </div>
+        </Link>
+      </section>
 
       {/* ── Upcoming Events (next 4 weeks) ───────────────────────────────── */}
       <section>
