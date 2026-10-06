@@ -1287,7 +1287,6 @@ import {
 } from "@/types/habits";
 import {
   hoursMinutesToMinutes,
-  minutesToHoursMinutes,
   formatMetricValue,
 } from "@/lib/habit-logic";
 import HabitDetailModal from "./HabitDetailModal";
@@ -1761,6 +1760,7 @@ export default function HabitsClient() {
   const [archivedOpen, setArchivedOpen] = useState(false);
   const [detailHabit, setDetailHabit] = useState<Habit | null>(null);
   const [justLoggedId, setJustLoggedId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -1781,30 +1781,43 @@ export default function HabitsClient() {
   }, []);
 
   async function handleLog(habitId: string, value: number) {
+    setActionError(null);
     try {
-      await fetch(`/api/habits/${habitId}/logs`, {
+      const res = await fetch(`/api/habits/${habitId}/logs`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ date: todayISO(), value }),
       });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error ?? "Failed to log value");
+      }
       setJustLoggedId(habitId);
       setTimeout(() => setJustLoggedId(null), 2000);
     } catch (err) {
       console.error("Failed to log habit value:", err);
+      setActionError(err instanceof Error ? err.message : "Failed to log value");
     }
   }
 
+  // No optimistic removal here — archive, then reload from the server, so a
+  // failed request never leaves a habit looking gone when it wasn't.
   async function handleArchive(habitId: string) {
-    setActive((prev) => prev.filter((h) => h.id !== habitId));
+    setActionError(null);
     try {
-      await fetch(`/api/habits/${habitId}`, {
+      const res = await fetch(`/api/habits/${habitId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "archive" }),
       });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error ?? "Failed to end habit");
+      }
       await load();
     } catch (err) {
       console.error("Failed to archive habit:", err);
+      setActionError(err instanceof Error ? err.message : "Failed to end habit");
     }
   }
 
@@ -1868,6 +1881,19 @@ export default function HabitsClient() {
           + Add Habit
         </button>
       </div>
+
+      {actionError && (
+        <div className="flex items-center justify-between gap-3 bg-status-red/10 border border-status-red/30 rounded-xl px-4 py-2.5">
+          <p className="text-sm text-status-red">{actionError}</p>
+          <button
+            type="button"
+            onClick={() => setActionError(null)}
+            className="text-xs text-status-red hover:underline shrink-0"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {active.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
