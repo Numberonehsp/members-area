@@ -969,6 +969,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const { searchParams } = new URL(req.url)
   const start = searchParams.get('start') ?? habit.start_date
   const end = searchParams.get('end') ?? todayISO()
+  const dateFormat = /^\d{4}-\d{2}-\d{2}$/
+  if (!dateFormat.test(start) || !dateFormat.test(end)) {
+    return NextResponse.json({ error: 'start and end must be YYYY-MM-DD' }, { status: 400 })
+  }
 
   if (NUTRITION_METRICS.has(habit.metric)) {
     // fetchLogsInRange throws on a DB error rather than returning [] — don't
