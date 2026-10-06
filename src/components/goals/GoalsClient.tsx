@@ -279,7 +279,6 @@ function CompletedGoalCard({ goal }: { goal: Goal }) {
 const GOAL_TYPES: { value: GoalType; label: string; emoji: string }[] = [
   { value: "strength", label: "Strength", emoji: "💪" },
   { value: "body", label: "Body", emoji: "⚖️" },
-  { value: "habit", label: "Habit", emoji: "🔥" },
   { value: "education", label: "Education", emoji: "📚" },
 ];
 
