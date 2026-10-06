@@ -36,6 +36,14 @@ CREATE TABLE IF NOT EXISTS member_habits (
   )
 );
 
+-- Backstops the API-layer "already active" check in POST /api/habits
+-- against a double-submit race (two concurrent requests both passing the
+-- check before either insert lands) — unlike the 5-habit cap, there's no
+-- similarly cheap partial-index backstop for a count, so that one stays
+-- API-layer-only, but this one-metric-at-a-time rule is a natural fit.
+CREATE UNIQUE INDEX IF NOT EXISTS member_habits_one_active_per_metric
+  ON member_habits (gymmaster_member_id, metric) WHERE status = 'active';
+
 ALTER TABLE member_habits ENABLE ROW LEVEL SECURITY;
 -- NOTE: Open-access policy for dev phase, matching nutrition_targets/nutrition_logs.
 -- Tighten to per-member access before production launch.

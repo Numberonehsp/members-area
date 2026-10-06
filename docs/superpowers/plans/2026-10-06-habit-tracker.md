@@ -127,6 +127,14 @@ CREATE TABLE IF NOT EXISTS member_habits (
   )
 );
 
+-- Backstops the API-layer "already active" check in POST /api/habits
+-- against a double-submit race (two concurrent requests both passing the
+-- check before either insert lands) — unlike the 5-habit cap, there's no
+-- similarly cheap partial-index backstop for a count, so that one stays
+-- API-layer-only, but this one-metric-at-a-time rule is a natural fit.
+CREATE UNIQUE INDEX IF NOT EXISTS member_habits_one_active_per_metric
+  ON member_habits (gymmaster_member_id, metric) WHERE status = 'active';
+
 ALTER TABLE member_habits ENABLE ROW LEVEL SECURITY;
 -- NOTE: Open-access policy for dev phase, matching nutrition_targets/nutrition_logs.
 -- Tighten to per-member access before production launch.
@@ -831,6 +839,11 @@ export async function POST(req: NextRequest) {
   if (!start_date) {
     return NextResponse.json({ error: 'start_date is required' }, { status: 400 })
   }
+  // Number(target) silently becomes null for garbage input (NaN serializes
+  // to null in the insert body) — reject it instead of discarding it.
+  if (target != null && target !== '' && !Number.isFinite(Number(target))) {
+    return NextResponse.json({ error: 'target must be a number' }, { status: 400 })
+  }
 
   // countActiveHabits/hasActiveHabitForMetric throw on a DB error rather
   // than returning 0/false — don't let a failed check silently pass.
@@ -852,15 +865,28 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'This habit is already active' }, { status: 422 })
   }
 
-  const habit = await createHabit(gymmaster_member_id, {
-    metric,
-    category: config.category,
-    target: target != null && target !== '' ? Number(target) : null,
-    cadence,
-    aggregation: cadence === 'weekly' ? aggregation : null,
-    start_date,
-    end_date: end_date || null,
-  })
+  let habit
+  try {
+    habit = await createHabit(gymmaster_member_id, {
+      metric,
+      category: config.category,
+      target: target != null && target !== '' ? Number(target) : null,
+      cadence,
+      aggregation: cadence === 'weekly' ? aggregation : null,
+      start_date,
+      end_date: end_date || null,
+    })
+  } catch (err) {
+    // 23505 = unique_violation — member_habits_one_active_per_metric catching
+    // a double-submit race that slipped past the hasActiveHabitForMetric
+    // check above (two concurrent requests both passing before either insert
+    // landed). Report it the same way the check itself would have.
+    if (err && typeof err === 'object' && 'code' in err && err.code === '23505') {
+      return NextResponse.json({ error: 'This habit is already active' }, { status: 422 })
+    }
+    console.error('[habits POST] failed to create habit:', err)
+    return NextResponse.json({ error: 'Failed to create habit' }, { status: 500 })
+  }
 
   return NextResponse.json({ habit }, { status: 201 })
 }
