@@ -1012,7 +1012,11 @@ function nutritionValueForMetric(
     case 'protein': return log.protein_g
     case 'carbs': return log.carbs_g
     case 'fat': return log.fats_g
-    default: return 0
+    // Unreachable today — this is only called after a NUTRITION_METRICS.has()
+    // check covering exactly these 4 cases — but a silent 0 would corrupt
+    // displayed progress if a 5th metric is ever added to that set without
+    // updating this switch, so fail loudly instead.
+    default: throw new Error(`no nutrition mapping for metric ${metric}`)
   }
 }
 
@@ -1041,25 +1045,27 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (NUTRITION_METRICS.has(habit.metric)) {
     // fetchLogsInRange throws on a DB error rather than returning [] — don't
     // let that look like "nothing logged this week" to the caller.
-    let nutritionLogs
+    // nutritionValueForMetric's default case can also throw (see its
+    // comment) — covered by this same try/catch.
+    let logs
     try {
-      nutritionLogs = await fetchLogsInRange(gymmaster_member_id, start, end)
+      const nutritionLogs = await fetchLogsInRange(gymmaster_member_id, start, end)
+      logs = nutritionLogs.map((l) => ({
+        id: l.id,
+        habit_id: habit.id,
+        date: l.date,
+        value: nutritionValueForMetric(l, habit.metric),
+        updated_at: l.updated_at,
+      }))
     } catch (err) {
       console.error('[habits logs GET] nutrition fetch failed:', err)
       return NextResponse.json({ error: 'Failed to load nutrition data' }, { status: 500 })
     }
-    const logs = nutritionLogs.map((l) => ({
-      id: l.id,
-      habit_id: habit.id,
-      date: l.date,
-      value: nutritionValueForMetric(l, habit.metric),
-      updated_at: l.updated_at,
-    }))
     return NextResponse.json({ logs })
   }
 
-  const logs = await fetchHabitLogs(habit.id, start, end)
-  return NextResponse.json({ logs })
+  const habitLogs = await fetchHabitLogs(habit.id, start, end)
+  return NextResponse.json({ logs: habitLogs })
 }
 
 // POST /api/habits/:id/logs — body: { date, value }. Upserts today's (or a
