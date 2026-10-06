@@ -1086,11 +1086,29 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!date || typeof value !== 'number' || !isFinite(value)) {
     return NextResponse.json({ error: 'date and a finite numeric value are required' }, { status: 400 })
   }
+  // Matches the DB's CHECK (value >= 0) on habit_logs — reject here with a
+  // clear message rather than letting that constraint throw an unhandled DB error.
+  if (value < 0) {
+    return NextResponse.json({ error: 'value cannot be negative' }, { status: 400 })
+  }
+  const dateFormat = /^\d{4}-\d{2}-\d{2}$/
+  if (!dateFormat.test(date)) {
+    return NextResponse.json({ error: 'date must be YYYY-MM-DD' }, { status: 400 })
+  }
   if (date > todayISO()) {
     return NextResponse.json({ error: 'Cannot log a future date' }, { status: 400 })
   }
+  if (date < habit.start_date) {
+    return NextResponse.json({ error: 'Cannot log a date before the habit started' }, { status: 400 })
+  }
 
-  const log = await upsertHabitLog(habit.id, date, value)
+  let log
+  try {
+    log = await upsertHabitLog(habit.id, date, value)
+  } catch (err) {
+    console.error('[habits logs POST] failed to save log:', err)
+    return NextResponse.json({ error: 'Failed to save log' }, { status: 500 })
+  }
   return NextResponse.json({ log }, { status: 201 })
 }
 ```
