@@ -24,6 +24,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if ('target' in body && body.target != null && body.target !== '' && !Number.isFinite(Number(body.target))) {
     return NextResponse.json({ error: 'target must be a number' }, { status: 400 })
   }
+  // Matches the DB's CHECK (target IS NULL OR target > 0).
+  if ('target' in body && body.target != null && body.target !== '' && Number(body.target) <= 0) {
+    return NextResponse.json({ error: 'target must be greater than 0' }, { status: 400 })
+  }
   const update: { target?: number | null; end_date?: string | null; status?: 'active' | 'archived' } = {}
   if ('target' in body) update.target = body.target != null && body.target !== '' ? Number(body.target) : null
   // Setting end_date alongside action:'archive' in one call is allowed —

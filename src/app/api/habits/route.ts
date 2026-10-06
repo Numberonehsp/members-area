@@ -8,10 +8,7 @@ import {
   archiveExpiredHabits,
 } from '@/lib/habit-queries'
 import { METRIC_CONFIG, MAX_ACTIVE_HABITS, type HabitMetric } from '@/types/habits'
-
-function todayISO(): string {
-  return new Date().toISOString().split('T')[0]
-}
+import { todayISO } from '@/lib/habit-logic'
 
 // GET — list the member's active and archived habits.
 export async function GET() {
@@ -63,6 +60,11 @@ export async function POST(req: NextRequest) {
   // to null in the insert body) — reject it instead of discarding it.
   if (target != null && target !== '' && !Number.isFinite(Number(target))) {
     return NextResponse.json({ error: 'target must be a number' }, { status: 400 })
+  }
+  // Matches the DB's CHECK (target IS NULL OR target > 0) — reject here with
+  // a clear message rather than letting that constraint throw a generic 500.
+  if (target != null && target !== '' && Number(target) <= 0) {
+    return NextResponse.json({ error: 'target must be greater than 0' }, { status: 400 })
   }
 
   // countActiveHabits/hasActiveHabitForMetric throw on a DB error rather

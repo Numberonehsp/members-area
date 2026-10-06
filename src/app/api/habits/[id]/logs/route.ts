@@ -3,10 +3,7 @@ import { cookies } from 'next/headers'
 import { fetchHabitById, fetchHabitLogs, upsertHabitLog } from '@/lib/habit-queries'
 import { fetchLogsInRange } from '@/lib/nutrition-queries'
 import { NUTRITION_METRICS, type HabitMetric } from '@/types/habits'
-
-function todayISO(): string {
-  return new Date().toISOString().split('T')[0]
-}
+import { todayISO } from '@/lib/habit-logic'
 
 function nutritionValueForMetric(
   log: { calories: number; protein_g: number; carbs_g: number; fats_g: number },
@@ -41,7 +38,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const { searchParams } = new URL(req.url)
   const start = searchParams.get('start') ?? habit.start_date
-  const end = searchParams.get('end') ?? todayISO()
+  // Bound the default end by the habit's own end_date — an archived habit's
+  // history must stop where it stopped, not keep absorbing nutrition_logs
+  // entries from after it ended (per the spec's [start_date, min(end_date,
+  // today)] window). An explicit ?end= query param is still honored as-is.
+  const defaultEnd = habit.end_date && habit.end_date < todayISO() ? habit.end_date : todayISO()
+  const end = searchParams.get('end') ?? defaultEnd
   const dateFormat = /^\d{4}-\d{2}-\d{2}$/
   if (!dateFormat.test(start) || !dateFormat.test(end)) {
     return NextResponse.json({ error: 'start and end must be YYYY-MM-DD' }, { status: 400 })
@@ -91,6 +93,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (NUTRITION_METRICS.has(habit.metric)) {
     return NextResponse.json({ error: 'Nutrition habits are logged from the Nutrition page' }, { status: 400 })
   }
+  if (habit.status !== 'active') {
+    return NextResponse.json({ error: 'Cannot log a value for an ended habit' }, { status: 400 })
+  }
 
   const body = await req.json()
   const { date, value } = body
@@ -111,6 +116,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
   if (date < habit.start_date) {
     return NextResponse.json({ error: 'Cannot log a date before the habit started' }, { status: 400 })
+  }
+  if (habit.end_date && date > habit.end_date) {
+    return NextResponse.json({ error: 'Cannot log a date after the habit ended' }, { status: 400 })
   }
 
   let log

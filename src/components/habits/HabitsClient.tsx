@@ -364,6 +364,7 @@ function SetupModal({
                   <input
                     type="number"
                     step="any"
+                    min="0"
                     placeholder={`e.g. 10000 ${selectedConfig!.unit}`}
                     value={target}
                     onChange={(e) => setTarget(e.target.value)}

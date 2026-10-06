@@ -160,14 +160,14 @@ export default function HabitDetailModal({ habit, onClose }: { habit: Habit; onC
             </div>
           )}
 
-          {!isNutrition && (
+          {!isNutrition && habit.status === "active" && (
             <form onSubmit={handleBackfill} className="flex items-end gap-2">
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Date</label>
                 <input
                   type="date"
                   value={backfillDate}
-                  max={todayISO()}
+                  max={habit.end_date && habit.end_date < todayISO() ? habit.end_date : todayISO()}
                   min={habit.start_date}
                   onChange={(e) => setBackfillDate(e.target.value)}
                   className={inputClass}
@@ -195,6 +195,12 @@ export default function HabitDetailModal({ habit, onClose }: { habit: Habit; onC
               </button>
               {saveError && <p className="text-xs text-status-red self-center">{saveError}</p>}
             </form>
+          )}
+
+          {!isNutrition && habit.status !== "active" && (
+            <p className="text-xs text-text-secondary italic">
+              This habit has ended — its history is kept, but new values can no longer be logged.
+            </p>
           )}
 
           {logs.length > 0 && (
