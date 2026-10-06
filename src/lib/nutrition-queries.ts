@@ -151,23 +151,34 @@ export async function addLogItem(
   if (updateError) throw new Error(updateError.message)
 }
 
-// Same as fetchDayLog, but distinguishes a genuine "no log yet" (0 rows) from
-// a real DB error instead of treating both as null — used by the habit
-// tracker's nutrition quick-entry, which merges a single field into this
-// row. A false null there would overwrite the day's other three macros with
-// zero instead of preserving them, so a transient read failure must throw,
-// not silently look like an empty day.
-export async function fetchDayLogOrThrow(gymMasterId: string, date: string): Promise<NutritionLog | null> {
+// Upsert a single macro field for a day, leaving the other three untouched —
+// used by the habit tracker's nutrition quick-entry, which must not clobber
+// whatever the Nutrition page's own (separate) totals entry has for the same
+// day. Deliberately NOT a read-then-merge-write: PostgREST's upsert only
+// touches the columns present in the payload, so omitting the other three
+// macros here means ON CONFLICT leaves them exactly as they were — no read
+// step, no race window between two independent writers to this row (unlike
+// a read-merge-write, which would have one). On a genuinely new row the
+// omitted columns take their table default (0), which is correct for a
+// first-ever entry that day.
+export async function upsertDayLogField(
+  gymMasterId: string,
+  date: string,
+  field: 'calories' | 'protein_g' | 'carbs_g' | 'fats_g',
+  value: number,
+): Promise<NutritionLog> {
   const supabase = client()
   const { data, error } = await supabase
     .from('nutrition_logs')
-    .select('*')
-    .eq('gymmaster_member_id', gymMasterId)
-    .eq('date', date)
-    .maybeSingle()
+    .upsert(
+      { gymmaster_member_id: gymMasterId, date, [field]: value, updated_at: new Date().toISOString() },
+      { onConflict: 'gymmaster_member_id,date' },
+    )
+    .select()
+    .single()
 
   if (error) throw new Error(error.message)
-  return data ?? null
+  return data
 }
 
 // Fetch logs for a member within an inclusive date range, oldest first —

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { fetchHabitById, fetchHabitLogs, upsertHabitLog } from '@/lib/habit-queries'
-import { fetchLogsInRange, fetchDayLogOrThrow, upsertDayLog } from '@/lib/nutrition-queries'
+import { fetchLogsInRange, upsertDayLogField } from '@/lib/nutrition-queries'
 import { NUTRITION_METRICS, type HabitMetric } from '@/types/habits'
 import { todayISO } from '@/lib/habit-logic'
 
@@ -127,15 +127,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const field = nutritionFieldForMetric(habit.metric)
     let updated
     try {
-      const existing = await fetchDayLogOrThrow(gymmaster_member_id, date)
-      const totals: NutritionTotals = {
-        calories: existing?.calories ?? 0,
-        protein_g: existing?.protein_g ?? 0,
-        carbs_g: existing?.carbs_g ?? 0,
-        fats_g: existing?.fats_g ?? 0,
-      }
-      totals[field] = value
-      updated = await upsertDayLog(gymmaster_member_id, date, totals)
+      // Single-column upsert, not read-merge-write — PostgREST's upsert only
+      // touches columns present in the payload, so the other three macros
+      // are left exactly as they were, with no read step and no race window
+      // against a concurrent Nutrition-page totals write to the same row.
+      updated = await upsertDayLogField(gymmaster_member_id, date, field, value)
     } catch (err) {
       console.error('[habits logs POST] failed to save nutrition value:', err)
       return NextResponse.json({ error: 'Failed to save value' }, { status: 500 })

@@ -156,7 +156,7 @@ function HabitCard({
       </div>
       {NUTRITION_METRICS.has(habit.metric) && (
         <p className="text-[11px] text-text-secondary italic">
-          Shared with your Nutrition page — logging here updates the same day&apos;s totals.
+          Logging here also updates your Nutrition page for today.
         </p>
       )}
 
