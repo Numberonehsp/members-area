@@ -402,6 +402,9 @@ describe('formatMetricValue', () => {
   it('formats a plain number with its unit', () => {
     expect(formatMetricValue(8000, 'number', 'steps')).toBe('8000 steps')
   })
+  it('rounds a long float tail (e.g. a weekly average) to one decimal place', () => {
+    expect(formatMetricValue(914.2857142857143, 'number', 'steps')).toBe('914.3 steps')
+  })
 })
 ```
 
@@ -484,7 +487,10 @@ export function formatMetricValue(
     const { hours, minutes } = minutesToHoursMinutes(Math.round(value))
     return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`
   }
-  return `${value} ${unit}`
+  // A weekly average (e.g. 2000/7) can carry a long float tail — round to
+  // one decimal place so it never renders as e.g. "914.2857142857143 steps".
+  const rounded = Math.round(value * 10) / 10
+  return `${rounded} ${unit}`
 }
 ```
 

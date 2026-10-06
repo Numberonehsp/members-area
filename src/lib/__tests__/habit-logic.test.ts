@@ -117,4 +117,7 @@ describe('formatMetricValue', () => {
   it('formats a plain number with its unit', () => {
     expect(formatMetricValue(8000, 'number', 'steps')).toBe('8000 steps')
   })
+  it('rounds a long float tail (e.g. a weekly average) to one decimal place', () => {
+    expect(formatMetricValue(914.2857142857143, 'number', 'steps')).toBe('914.3 steps')
+  })
 })

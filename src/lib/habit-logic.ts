@@ -67,5 +67,8 @@ export function formatMetricValue(
     const { hours, minutes } = minutesToHoursMinutes(Math.round(value))
     return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`
   }
-  return `${value} ${unit}`
+  // A weekly average (e.g. 2000/7) can carry a long float tail — round to
+  // one decimal place so it never renders as e.g. "914.2857142857143 steps".
+  const rounded = Math.round(value * 10) / 10
+  return `${rounded} ${unit}`
 }
