@@ -150,3 +150,24 @@ export async function addLogItem(
 
   if (updateError) throw new Error(updateError.message)
 }
+
+// Fetch logs for a member within an inclusive date range, oldest first —
+// used by the habit tracker to compute a nutrition-category habit's
+// progress without a second entry point (those habits read this table,
+// never write their own — see migrations/009_habit_tracker.sql).
+export async function fetchLogsInRange(
+  gymMasterId: string,
+  startDate: string,
+  endDate: string
+): Promise<NutritionLog[]> {
+  const supabase = client()
+  const { data } = await supabase
+    .from('nutrition_logs')
+    .select('*')
+    .eq('gymmaster_member_id', gymMasterId)
+    .gte('date', startDate)
+    .lte('date', endDate)
+    .order('date', { ascending: true })
+
+  return data ?? []
+}
