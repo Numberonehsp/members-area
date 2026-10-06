@@ -151,6 +151,25 @@ export async function addLogItem(
   if (updateError) throw new Error(updateError.message)
 }
 
+// Same as fetchDayLog, but distinguishes a genuine "no log yet" (0 rows) from
+// a real DB error instead of treating both as null — used by the habit
+// tracker's nutrition quick-entry, which merges a single field into this
+// row. A false null there would overwrite the day's other three macros with
+// zero instead of preserving them, so a transient read failure must throw,
+// not silently look like an empty day.
+export async function fetchDayLogOrThrow(gymMasterId: string, date: string): Promise<NutritionLog | null> {
+  const supabase = client()
+  const { data, error } = await supabase
+    .from('nutrition_logs')
+    .select('*')
+    .eq('gymmaster_member_id', gymMasterId)
+    .eq('date', date)
+    .maybeSingle()
+
+  if (error) throw new Error(error.message)
+  return data ?? null
+}
+
 // Fetch logs for a member within an inclusive date range, oldest first —
 // used by the habit tracker to compute a nutrition-category habit's
 // progress without a second entry point (those habits read this table,

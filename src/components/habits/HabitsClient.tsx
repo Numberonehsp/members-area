@@ -124,7 +124,6 @@ function HabitCard({
   justLogged: boolean;
 }) {
   const config = METRIC_CONFIG[habit.metric];
-  const isNutrition = NUTRITION_METRICS.has(habit.metric);
   const cadenceLabel =
     habit.cadence === "daily"
       ? "Daily"
@@ -151,15 +150,14 @@ function HabitCard({
         {habit.target != null && ` · target ${formatMetricValue(habit.target, config.inputKind, config.unit)}`}
       </p>
 
-      {isNutrition ? (
-        <p className="text-xs text-text-secondary italic">
-          Logged from the Nutrition page — view progress below.
+      <div className="flex items-center gap-2">
+        <QuickEntryInput habit={habit} onSubmit={(v) => onLog(habit.id, v)} />
+        {justLogged && <span className="text-xs text-status-green font-semibold">Logged ✓</span>}
+      </div>
+      {NUTRITION_METRICS.has(habit.metric) && (
+        <p className="text-[11px] text-text-secondary italic">
+          Shared with your Nutrition page — logging here updates the same day&apos;s totals.
         </p>
-      ) : (
-        <div className="flex items-center gap-2">
-          <QuickEntryInput habit={habit} onSubmit={(v) => onLog(habit.id, v)} />
-          {justLogged && <span className="text-xs text-status-green font-semibold">Logged ✓</span>}
-        </div>
       )}
 
       <button

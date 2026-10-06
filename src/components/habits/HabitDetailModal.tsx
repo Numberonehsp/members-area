@@ -12,7 +12,7 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
-import { METRIC_CONFIG, NUTRITION_METRICS, type Habit } from "@/types/habits";
+import { METRIC_CONFIG, type Habit } from "@/types/habits";
 import {
   currentPeriodValue,
   progressPct,
@@ -30,7 +30,6 @@ const inputClass =
 
 export default function HabitDetailModal({ habit, onClose }: { habit: Habit; onClose: () => void }) {
   const config = METRIC_CONFIG[habit.metric];
-  const isNutrition = NUTRITION_METRICS.has(habit.metric);
   const [logs, setLogs] = useState<HabitLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -160,7 +159,7 @@ export default function HabitDetailModal({ habit, onClose }: { habit: Habit; onC
             </div>
           )}
 
-          {!isNutrition && habit.status === "active" && (
+          {habit.status === "active" && (
             <form onSubmit={handleBackfill} className="flex items-end gap-2">
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Date</label>
@@ -197,7 +196,7 @@ export default function HabitDetailModal({ habit, onClose }: { habit: Habit; onC
             </form>
           )}
 
-          {!isNutrition && habit.status !== "active" && (
+          {habit.status !== "active" && (
             <p className="text-xs text-text-secondary italic">
               This habit has ended — its history is kept, but new values can no longer be logged.
             </p>
