@@ -832,12 +832,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'start_date is required' }, { status: 400 })
   }
 
-  const activeCount = await countActiveHabits(gymmaster_member_id)
+  // countActiveHabits/hasActiveHabitForMetric throw on a DB error rather
+  // than returning 0/false — don't let a failed check silently pass.
+  let activeCount: number
+  let alreadyTracking: boolean
+  try {
+    activeCount = await countActiveHabits(gymmaster_member_id)
+    alreadyTracking = await hasActiveHabitForMetric(gymmaster_member_id, metric)
+  } catch (err) {
+    console.error('[habits POST] failed to check existing habits:', err)
+    return NextResponse.json({ error: 'Failed to check existing habits' }, { status: 500 })
+  }
+
   if (activeCount >= MAX_ACTIVE_HABITS) {
     return NextResponse.json({ error: `Maximum ${MAX_ACTIVE_HABITS} active habits allowed` }, { status: 422 })
   }
 
-  const alreadyTracking = await hasActiveHabitForMetric(gymmaster_member_id, metric)
   if (alreadyTracking) {
     return NextResponse.json({ error: 'This habit is already active' }, { status: 422 })
   }
