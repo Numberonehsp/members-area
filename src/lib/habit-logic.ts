@@ -8,6 +8,18 @@ import type { HabitCadence, HabitAggregation } from '@/types/habits'
 
 export type HabitLogEntry = { date: string; value: number }
 
+/** Shared by HabitsClient.tsx and HabitDetailModal.tsx — kept in one place so they can't drift. */
+export function todayISO(): string {
+  return new Date().toISOString().split('T')[0]
+}
+
+export function formatDate(dateStr: string): string {
+  return new Date(`${dateStr}T00:00:00`).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+  })
+}
+
 export function canAddHabit(activeCount: number, maxActive: number): boolean {
   return activeCount < maxActive
 }

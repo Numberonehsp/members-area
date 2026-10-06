@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   BarChart,
   Bar,
@@ -13,18 +13,14 @@ import {
   CartesianGrid,
 } from "recharts";
 import { METRIC_CONFIG, NUTRITION_METRICS, type Habit } from "@/types/habits";
-import { currentPeriodValue, progressPct, formatMetricValue, type HabitLogEntry } from "@/lib/habit-logic";
-
-function todayISO(): string {
-  return new Date().toISOString().split("T")[0];
-}
-
-function formatDate(dateStr: string): string {
-  return new Date(`${dateStr}T00:00:00`).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-  });
-}
+import {
+  currentPeriodValue,
+  progressPct,
+  formatMetricValue,
+  todayISO,
+  formatDate,
+  type HabitLogEntry,
+} from "@/lib/habit-logic";
 
 // Discrete daily actions read better as bars; continuous measures as a line.
 const BAR_METRICS = new Set(["steps", "workouts", "exercise_reps", "distance"]);
@@ -37,18 +33,23 @@ export default function HabitDetailModal({ habit, onClose }: { habit: Habit; onC
   const isNutrition = NUTRITION_METRICS.has(habit.metric);
   const [logs, setLogs] = useState<HabitLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [backfillDate, setBackfillDate] = useState(todayISO());
   const [backfillValue, setBackfillValue] = useState("");
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
+    setLoadError(null);
     try {
       const res = await fetch(`/api/habits/${habit.id}/logs`);
       const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Failed to load logs");
       setLogs((json.logs ?? []).map((l: { date: string; value: number }) => ({ date: l.date, value: l.value })));
     } catch (err) {
       console.error("Failed to load habit logs:", err);
+      setLoadError(err instanceof Error ? err.message : "Failed to load logs");
     } finally {
       setLoading(false);
     }
@@ -64,16 +65,20 @@ export default function HabitDetailModal({ habit, onClose }: { habit: Habit; onC
     const value = parseFloat(backfillValue);
     if (!isFinite(value)) return;
     setSaving(true);
+    setSaveError(null);
     try {
-      await fetch(`/api/habits/${habit.id}/logs`, {
+      const res = await fetch(`/api/habits/${habit.id}/logs`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ date: backfillDate, value }),
       });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error ?? "Failed to save value");
       setBackfillValue("");
       await load();
     } catch (err) {
       console.error("Failed to save backfilled value:", err);
+      setSaveError(err instanceof Error ? err.message : "Failed to save value");
     } finally {
       setSaving(false);
     }
@@ -81,7 +86,7 @@ export default function HabitDetailModal({ habit, onClose }: { habit: Habit; onC
 
   const current = currentPeriodValue(logs, habit.cadence, habit.aggregation, todayISO());
   const pct = progressPct(current, habit.target);
-  const chartData = logs.map((l) => ({ date: formatDate(l.date), value: l.value }));
+  const chartData = useMemo(() => logs.map((l) => ({ date: formatDate(l.date), value: l.value })), [logs]);
 
   return (
     <div
@@ -121,6 +126,12 @@ export default function HabitDetailModal({ habit, onClose }: { habit: Habit; onC
         </div>
 
         <div className="px-6 pb-6 space-y-6">
+          {loadError && (
+            <p className="text-sm text-status-red bg-status-red/10 border border-status-red/30 rounded-xl px-3 py-2">
+              {loadError}
+            </p>
+          )}
+
           {loading ? (
             <p className="text-sm text-text-secondary">Loading…</p>
           ) : logs.length === 0 ? (
@@ -169,6 +180,7 @@ export default function HabitDetailModal({ habit, onClose }: { habit: Habit; onC
                 <input
                   type="number"
                   step="any"
+                  min="0"
                   value={backfillValue}
                   onChange={(e) => setBackfillValue(e.target.value)}
                   className={`${inputClass} w-28`}
@@ -181,6 +193,7 @@ export default function HabitDetailModal({ habit, onClose }: { habit: Habit; onC
               >
                 Save
               </button>
+              {saveError && <p className="text-xs text-status-red self-center">{saveError}</p>}
             </form>
           )}
 

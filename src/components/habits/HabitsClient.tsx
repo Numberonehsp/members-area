@@ -17,21 +17,12 @@ import {
 import {
   hoursMinutesToMinutes,
   formatMetricValue,
+  todayISO,
+  formatDate,
 } from "@/lib/habit-logic";
 import HabitDetailModal from "./HabitDetailModal";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function todayISO(): string {
-  return new Date().toISOString().split("T")[0];
-}
-
-function formatDate(dateStr: string): string {
-  return new Date(`${dateStr}T00:00:00`).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-  });
-}
 
 const inputClass =
   "bg-bg-main border border-border-light rounded-xl px-3 py-2.5 text-sm text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:border-brand/50 transition-colors";
@@ -101,6 +92,7 @@ function QuickEntryInput({
       <input
         type="number"
         step="any"
+        min="0"
         placeholder={config.unit}
         value={value}
         onChange={(e) => setValue(e.target.value)}
