@@ -12,7 +12,7 @@ export const MEMBER_NAV_ITEMS = [
   { href: "/education", label: "Learn", match: [] },
   {
     href: "/results",
-    label: "Tracking",
+    label: "Habits, Goals & Events",
     match: ["/goals", "/nutrition", "/wellbeing", "/messages"],
   },
   {
