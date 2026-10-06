@@ -161,7 +161,7 @@ export async function fetchLogsInRange(
   endDate: string
 ): Promise<NutritionLog[]> {
   const supabase = client()
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('nutrition_logs')
     .select('*')
     .eq('gymmaster_member_id', gymMasterId)
@@ -169,5 +169,9 @@ export async function fetchLogsInRange(
     .lte('date', endDate)
     .order('date', { ascending: true })
 
+  // Unlike fetchDayLog/fetchWeekLogs, a failed fetch here must not look
+  // identical to "nothing logged this week" — it feeds habit progress math
+  // that decides whether a member hit their target.
+  if (error) throw new Error(error.message)
   return data ?? []
 }

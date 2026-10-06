@@ -541,7 +541,7 @@ export async function fetchLogsInRange(
   endDate: string
 ): Promise<NutritionLog[]> {
   const supabase = client()
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('nutrition_logs')
     .select('*')
     .eq('gymmaster_member_id', gymMasterId)
@@ -549,6 +549,10 @@ export async function fetchLogsInRange(
     .lte('date', endDate)
     .order('date', { ascending: true })
 
+  // Unlike fetchDayLog/fetchWeekLogs, a failed fetch here must not look
+  // identical to "nothing logged this week" — it feeds habit progress math
+  // that decides whether a member hit their target.
+  if (error) throw new Error(error.message)
   return data ?? []
 }
 ```
@@ -967,7 +971,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const end = searchParams.get('end') ?? todayISO()
 
   if (NUTRITION_METRICS.has(habit.metric)) {
-    const nutritionLogs = await fetchLogsInRange(gymmaster_member_id, start, end)
+    // fetchLogsInRange throws on a DB error rather than returning [] — don't
+    // let that look like "nothing logged this week" to the caller.
+    let nutritionLogs
+    try {
+      nutritionLogs = await fetchLogsInRange(gymmaster_member_id, start, end)
+    } catch (err) {
+      console.error('[habits logs GET] nutrition fetch failed:', err)
+      return NextResponse.json({ error: 'Failed to load nutrition data' }, { status: 500 })
+    }
     const logs = nutritionLogs.map((l) => ({
       id: l.id,
       habit_id: habit.id,
