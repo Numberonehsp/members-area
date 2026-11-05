@@ -347,3 +347,10 @@ CREATE INDEX IF NOT EXISTS member_questionnaires_member
   ON member_questionnaires (gymmaster_member_id, submitted_at DESC);
 ALTER TABLE member_questionnaires ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON member_questionnaires FROM anon, authenticated;
+
+-- Migration 012: questionnaire variants (adult, youth)
+ALTER TABLE member_questionnaires
+  ADD COLUMN IF NOT EXISTS variant TEXT NOT NULL DEFAULT 'adult' CHECK (variant IN ('adult', 'youth'));
+DROP INDEX IF EXISTS member_questionnaires_one_draft;
+CREATE UNIQUE INDEX IF NOT EXISTS member_questionnaires_one_draft
+  ON member_questionnaires (gymmaster_member_id, kind, variant) WHERE status = 'draft';

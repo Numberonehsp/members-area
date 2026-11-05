@@ -1,6 +1,6 @@
 // Checking answers on the server. Pure: no database, no network.
 
-import { ALL_QUESTIONS, SHORT_TEXT_MAX, TEXT_MAX, questionById, type Question } from './schema'
+import { SHORT_TEXT_MAX, TEXT_MAX, questionById, questionsFor, type Question, type Variant } from './schema'
 
 export type AnswerValue = string | number | boolean | string[]
 export type Answers = Record<string, AnswerValue>
@@ -36,11 +36,11 @@ function checkOne(q: Question, v: unknown): Checked {
  * Keep only known questions with valid values. A blank text answer is dropped.
  * Used for drafts, which may be incomplete. Unknown ids and bad values are an error.
  */
-export function cleanAnswers(raw: unknown): { ok: true; answers: Answers } | { ok: false; error: string } {
+export function cleanAnswers(raw: unknown, variant: Variant = 'adult'): { ok: true; answers: Answers } | { ok: false; error: string } {
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return { ok: false, error: 'Answers must be an object.' }
   const out: Answers = {}
   for (const [id, v] of Object.entries(raw as Record<string, unknown>)) {
-    const q = questionById(id)
+    const q = questionById(id, variant)
     if (!q) return { ok: false, error: 'Unknown question.' }
     if (v === null || v === undefined) continue
     const c = checkOne(q, v)
@@ -52,6 +52,6 @@ export function cleanAnswers(raw: unknown): { ok: true; answers: Answers } | { o
 }
 
 /** Required questions with no answer, in order. Empty means ready to submit. */
-export function missingRequired(answers: Answers): Question[] {
-  return ALL_QUESTIONS.filter(q => q.required && (answers[q.id] === undefined || (Array.isArray(answers[q.id]) && (answers[q.id] as string[]).length === 0)))
+export function missingRequired(answers: Answers, variant: Variant = 'adult'): Question[] {
+  return questionsFor(variant).filter(q => q.required && (answers[q.id] === undefined || (Array.isArray(answers[q.id]) && (answers[q.id] as string[]).length === 0)))
 }

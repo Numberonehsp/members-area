@@ -22,7 +22,10 @@ const opts = (...pairs: [string, string][]): Option[] => pairs.map(([value, labe
 const bands = opts(['lt5', 'Fewer than 5 hours'], ['5-9', '5 to 9 hours'], ['10-14', '10 to 14 hours'], ['15-19', '15 to 19 hours'], ['20+', '20 hours or more'])
 const household = opts(['me', 'Me'], ['partner', 'Partner'], ['children', 'Children'], ['housemates', 'Housemates'], ['family', 'Other family'])
 
-export const SECTIONS: Section[] = [
+export type Variant = 'adult' | 'youth'
+export const VARIANTS: readonly Variant[] = ['adult', 'youth']
+
+const ADULT_SECTIONS: Section[] = [
   {
     key: 'about',
     title: 'Staying in touch',
@@ -141,14 +144,107 @@ export const SECTIONS: Section[] = [
   },
 ]
 
-export const ALL_QUESTIONS: Question[] = SECTIONS.flatMap(s => s.questions)
-const BY_ID = new Map<string, Question>()
-for (const q of ALL_QUESTIONS) {
-  BY_ID.set(q.id, q)
-  if (q.kind === 'yesno' && q.detailId) BY_ID.set(q.detailId, { id: q.detailId, kind: 'text', label: q.detailLabel ?? '' })
+const youthBands = opts(['lt3', 'Fewer than 3 hours'], ['3-5', '3 to 5 hours'], ['6-8', '6 to 8 hours'], ['9-11', '9 to 11 hours'], ['12+', '12 hours or more'])
+
+// The youth athlete version: shorter, simpler words, no weight-loss goals, and a
+// parent or guardian section. A parent can fill it in with, or for, the athlete.
+const YOUTH_SECTIONS: Section[] = [
+  {
+    key: 'about',
+    title: 'About you',
+    intro: 'A parent or guardian should help with this, or fill it in for the athlete.',
+    questions: [
+      { id: 'completed_by', kind: 'single', label: 'Who is filling this in?', required: true, options: opts(['athlete', 'The athlete, with a parent or guardian'], ['parent', 'A parent or guardian']) },
+      { id: 'guardian_name', kind: 'text', short: true, label: 'Parent or guardian name', required: true },
+      { id: 'guardian_phone', kind: 'text', short: true, label: 'Parent or guardian phone number (our emergency contact)', required: true },
+      { id: 'contact_pref', kind: 'single', label: 'How should we contact the family?', required: true, options: opts(['whatsapp', 'WhatsApp'], ['text', 'Text'], ['email', 'Email'], ['phone', 'Phone call'], ['in_person', 'In person at the gym']) },
+    ],
+  },
+  {
+    key: 'sport',
+    title: 'Sport and goals',
+    questions: [
+      { id: 'sports', kind: 'text', label: 'Which sports or activities do you do?', required: true, hint: 'For example football, netball, swimming' },
+      { id: 'level', kind: 'single', label: 'What level?', options: opts(['fun', 'For fun'], ['school', 'School team'], ['club', 'Club team'], ['county', 'County or regional'], ['national', 'National or academy']) },
+      { id: 'season', kind: 'text', label: 'Any big matches, events or seasons coming up?' },
+      {
+        id: 'youth_goals', kind: 'multi', label: 'What do you want from training? Tick all that apply.', required: true,
+        options: opts(
+          ['stronger', 'Get stronger'], ['faster', 'Get faster'], ['fitter', 'Get fitter'], ['performance', 'Play better in my sport'], ['injury', 'Avoid injuries'],
+          ['confidence', 'Feel more confident'], ['team', 'Make a team'], ['fun', 'Enjoy exercise'], ['energy', 'Have more energy'],
+        ),
+      },
+      { id: 'priority_1', kind: 'text', label: 'What is the one thing you most want to improve?', required: true },
+    ],
+  },
+  {
+    key: 'training',
+    title: 'Training now',
+    questions: [
+      { id: 'youth_hours_active', kind: 'single', label: 'Roughly how many hours a week do you train or play sport, in total?', options: youthBands },
+      { id: 'best_times', kind: 'multi', label: 'When can you usually train?', options: opts(['early', 'Before school'], ['afterschool', 'After school'], ['evening', 'Evening'], ['weekend', 'Weekends'], ['holidays', 'School holidays']) },
+      { id: 'worked', kind: 'text', label: 'What has worked well for you in training before?' },
+    ],
+  },
+  {
+    key: 'health',
+    title: 'Health',
+    intro: 'A parent or guardian should answer these. They help the coach keep training safe. Only your coaches see them.',
+    questions: [
+      { id: 'has_condition', kind: 'yesno', label: 'Does the athlete have a medical condition or past injury we should know about?', required: true, detailId: 'condition_detail', detailLabel: 'Tell us a little about it' },
+      { id: 'has_pain', kind: 'yesno', label: 'Any pain, illness or injury right now?', required: true, detailId: 'pain_detail', detailLabel: 'Tell us a little about it' },
+      { id: 'has_asthma_allergy', kind: 'yesno', label: 'Asthma, allergies or anything else we may need to act on in an emergency?', required: true, detailId: 'asthma_allergy_detail', detailLabel: 'Tell us a little about it' },
+      { id: 'takes_meds', kind: 'yesno', label: 'Taking any regular medication?', required: true },
+      { id: 'rating_health', kind: 'scale', label: 'How healthy do you feel right now?', low: 'Not healthy', high: 'Very healthy', required: true },
+    ],
+  },
+  {
+    key: 'everyday',
+    title: 'Eating, sleep and school life',
+    questions: [
+      { id: 'rating_nutrition', kind: 'scale', label: 'How would you rate your eating habits?', low: 'Not good', high: 'Really good', required: true },
+      { id: 'meals_per_day', kind: 'single', label: 'Meals a day, on a normal day', options: opts(['1-2', '1 or 2'], ['3', '3'], ['4', '4'], ['5+', '5 or more']) },
+      { id: 'breakfast', kind: 'single', label: 'Do you usually have breakfast?', options: opts(['always', 'Most days'], ['sometimes', 'Sometimes'], ['rarely', 'Rarely']) },
+      { id: 'sleep_hours_youth', kind: 'single', label: 'How many hours do you sleep on a school night?', required: true, options: opts(['7-', '7 or fewer'], ['8', '8'], ['9', '9'], ['10', '10'], ['11+', '11 or more']) },
+      { id: 'rating_stress', kind: 'scale', label: 'How stressed or worried do you feel on a normal week (school, exams, sport)?', low: 'Not at all', high: 'Extremely', required: true },
+      { id: 'rating_schedule', kind: 'scale', label: 'How busy does your week feel?', low: 'Way too busy', high: 'Calm and relaxed', required: true },
+      { id: 'rating_support', kind: 'scale', label: 'How much do family, friends and coaches support your training?', low: 'Not at all', high: 'Completely', required: true },
+    ],
+  },
+  {
+    key: 'readiness',
+    title: 'Ready to train',
+    questions: [
+      { id: 'ready', kind: 'scale', label: 'How READY are you to put in the work?', low: 'Not at all', high: 'Completely', required: true },
+      { id: 'willing', kind: 'scale', label: 'How WILLING are you to try new things?', low: 'Not at all', high: 'Completely', required: true },
+      { id: 'able', kind: 'scale', label: 'How easy is it for you to fit training in?', low: 'Very hard', high: 'Very easy', required: true },
+      { id: 'expect_coach', kind: 'text', label: 'What do you hope to get from your coach?' },
+      { id: 'parent_notes', kind: 'text', label: 'Anything else a parent or guardian would like us to know?' },
+    ],
+  },
+]
+
+const SECTION_SETS: Record<Variant, Section[]> = { adult: ADULT_SECTIONS, youth: YOUTH_SECTIONS }
+
+export const sectionsFor = (v: Variant): Section[] => SECTION_SETS[v]
+export const questionsFor = (v: Variant): Question[] => SECTION_SETS[v].flatMap(s => s.questions)
+
+const BY_ID: Record<Variant, Map<string, Question>> = { adult: new Map(), youth: new Map() }
+for (const v of VARIANTS) {
+  for (const q of questionsFor(v)) {
+    BY_ID[v].set(q.id, q)
+    if (q.kind === 'yesno' && q.detailId) BY_ID[v].set(q.detailId, { id: q.detailId, kind: 'text', label: q.detailLabel ?? '' })
+  }
 }
-export const questionById = (id: string): Question | undefined => BY_ID.get(id)
+export const questionById = (id: string, v: Variant): Question | undefined => BY_ID[v].get(id)
+
+export const isVariant = (v: unknown): v is Variant => v === 'adult' || v === 'youth'
 
 /** Wording the member agrees to when they submit. */
-export const CONSENT_TEXT =
-  'I am happy for Number One HSP to store these answers and share them with my coaches so they can tailor my training and support. I can ask to see or delete them at any time.'
+const CONSENT: Record<Variant, string> = {
+  adult:
+    'I am happy for Number One HSP to store these answers and share them with my coaches so they can tailor my training and support. I can ask to see or delete them at any time.',
+  youth:
+    'I am the parent or legal guardian of this athlete. I am happy for Number One HSP to store these answers and share them with the athlete’s coaches so they can tailor training and support. I can ask to see or delete them at any time.',
+}
+export const consentTextFor = (v: Variant): string => CONSENT[v]

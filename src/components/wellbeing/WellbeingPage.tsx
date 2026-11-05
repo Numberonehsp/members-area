@@ -114,6 +114,21 @@ export default function WellbeingPage({ checkins, profileEnabled = false }: Prop
           <span className="text-brand text-sm">→</span>
         </Link>
       )}
+      {profileEnabled && (
+        <Link
+          href="/wellbeing/profile/youth"
+          className="flex items-center justify-between bg-bg-card border border-border-light rounded-xl px-5 py-4 mb-4 hover:border-brand/40 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-xl">🏅</span>
+            <div>
+              <p className="text-sm font-semibold text-text-primary">Youth athlete profile</p>
+              <p className="text-xs text-text-secondary">A shorter version for under 18s, to complete with a parent or guardian</p>
+            </div>
+          </div>
+          <span className="text-brand text-sm">→</span>
+        </Link>
+      )}
 
       {/* Messages shortcut */}
       <Link
