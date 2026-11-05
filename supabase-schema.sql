@@ -324,3 +324,26 @@ CREATE TABLE IF NOT EXISTS member_coach_goals (
 ALTER TABLE member_coach_goals ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow all access to member_coach_goals"
   ON member_coach_goals FOR ALL USING (true) WITH CHECK (true);
+
+-- Migration 011: Member questionnaires (PRIVATE: RLS on, no policy, no anon grants; service role only)
+CREATE TABLE IF NOT EXISTS member_questionnaires (
+  id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  gymmaster_member_id  TEXT NOT NULL,
+  kind                 TEXT NOT NULL DEFAULT 'initial' CHECK (kind IN ('initial', 'refresh')),
+  version              INTEGER NOT NULL DEFAULT 1,
+  status               TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'submitted')),
+  answers              JSONB NOT NULL DEFAULT '{}'::jsonb,
+  scores               JSONB NOT NULL DEFAULT '{}'::jsonb,
+  flags                TEXT[] NOT NULL DEFAULT '{}',
+  consent_at           TIMESTAMPTZ,
+  submitted_at         TIMESTAMPTZ,
+  created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK (status <> 'submitted' OR (submitted_at IS NOT NULL AND consent_at IS NOT NULL))
+);
+CREATE UNIQUE INDEX IF NOT EXISTS member_questionnaires_one_draft
+  ON member_questionnaires (gymmaster_member_id, kind) WHERE status = 'draft';
+CREATE INDEX IF NOT EXISTS member_questionnaires_member
+  ON member_questionnaires (gymmaster_member_id, submitted_at DESC);
+ALTER TABLE member_questionnaires ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON member_questionnaires FROM anon, authenticated;
