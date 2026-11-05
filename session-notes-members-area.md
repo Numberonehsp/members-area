@@ -417,3 +417,6 @@ No other behaviour change — the mirror block itself was already correct. `npx 
 
 ## 2026-11-05: goals from your coach
 Branch `coach-goals-from-checkins`: migration 010 (`member_coach_goals`), `GET /api/goals/coach`, `CoachGoals` card on My Goals. Rows are written by the Staff Hub from check-ins. Run migration 010 in Supabase first. Not committed.
+
+## 2026-11-05: coach profile shows coach goals
+Branch `coach-profile-coach-goals`: coach portal member page Goals card lists the check-in goals from `member_coach_goals`.
