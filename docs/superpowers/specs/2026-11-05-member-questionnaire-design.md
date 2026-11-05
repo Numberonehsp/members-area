@@ -123,3 +123,12 @@ To switch on (you do these; they are not done):
 3. Privacy notice: add that we collect health and lifestyle answers to tailor coaching, that they are optional, shared with your coaches, kept while the person is a member, and can be viewed or deleted on request. Needs your sign-off, and ideally a quick data-protection check.
 
 Known and left alone: `getMemberProfile()` writes the whole GymMaster profile response (name, email) to the server logs on every call. Worth removing separately. Existing routes still trust the readable `gymmaster_member_id` cookie; only new private-data routes use `verifiedMemberId()`.
+
+## 10. Phase 1 status (built 2026-11-05, branch `questionnaire-phase-1`, on top of phase 0)
+
+Built, switched OFF (404 until `QUESTIONNAIRE_ENABLED=true`):
+- `src/lib/questionnaire/`: `schema.ts` (10 sections, our own wording, versioned), `answers.ts` (checks), `scoring.ts` (chart numbers and 8 coach flags), `service.ts` (draft/submit rules, supabase store), `enabled.ts`.
+- API: `GET /api/questionnaire`, `PUT /api/questionnaire/draft`, `POST /api/questionnaire/submit`. Each checks the switch, then `verifiedMemberId()`, then uses the service-role client. Logs codes only, never answers.
+- UI: `/wellbeing/profile` (one section per screen, autosave on Next, progress bar, consent step) and a "My health profile" card on Wellbeing (only when enabled).
+- Defaults I took for the open decisions: our own wording; no PAR-Q+ (health is yes/no plus detail; medication yes/no only, no names); no under-18 handling yet; all coaches can see answers (Phase 3). **Decide the under-18 and PAR-Q+ questions before turning the switch on.**
+- 45 tests pass; `next build` passes. Not run against a real database (migration 011 and the key are not set up yet), so the save and submit routes are tested with a fake store only.

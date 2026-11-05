@@ -423,3 +423,6 @@ Branch `coach-profile-coach-goals`: coach portal member page Goals card lists th
 
 ## 2026-11-05: questionnaire Phase 0
 Branch `questionnaire-phase-0`: `supabase-admin.ts`, `member-auth.ts`, `verifyMemberToken`, migration 011 (`member_questionnaires`, RLS on, no policy). Plan: docs/superpowers/specs/2026-11-05-member-questionnaire-design.md. Not live until migration 011 is run and SUPABASE_SERVICE_ROLE_KEY is set in Vercel.
+
+## 2026-11-05: questionnaire Phase 1
+Branch `questionnaire-phase-1` (on phase 0): schema/answers/scoring/service in `src/lib/questionnaire`, `/api/questionnaire*`, `/wellbeing/profile` form, Wellbeing card. Off until QUESTIONNAIRE_ENABLED=true. Needs migration 011 and SUPABASE_SERVICE_ROLE_KEY first.
