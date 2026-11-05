@@ -308,3 +308,19 @@ ALTER TABLE wellbeing_checkins ENABLE ROW LEVEL SECURITY;
 ALTER TABLE commitment_club_winners ENABLE ROW LEVEL SECURITY;
 ALTER TABLE message_threads ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+
+-- Migration 010: Goals from your coach (copied from Staff Hub check-ins)
+CREATE TABLE IF NOT EXISTS member_coach_goals (
+  id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  gymmaster_member_id  TEXT NOT NULL,
+  kind                 TEXT NOT NULL CHECK (kind IN ('goal', 'next')),
+  goal_text            TEXT NOT NULL CHECK (char_length(goal_text) <= 500),
+  set_on               DATE NOT NULL,
+  set_by               TEXT NOT NULL DEFAULT 'Coach',
+  checkin_id           UUID,
+  updated_at           TIMESTAMPTZ DEFAULT now(),
+  UNIQUE (gymmaster_member_id, kind)
+);
+ALTER TABLE member_coach_goals ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all access to member_coach_goals"
+  ON member_coach_goals FOR ALL USING (true) WITH CHECK (true);

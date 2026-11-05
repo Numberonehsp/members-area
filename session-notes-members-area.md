@@ -414,3 +414,6 @@ No other behaviour change — the mirror block itself was already correct. `npx 
 - Dashboard: `Spotlight` (server) + `SpotlightRotator` (client) beside the welcome heading (top right on md+, stacked on mobile). Last 5 days = single "NOMINATE HERE" slide; otherwise rotates gym events (max 2) and active `gym_partners` (max 3) every 6s, pauses on hover/focus, respects reduced motion.
 - `WelcomeBanner` lost its own `mb-8`; dashboard page wrapper owns spacing now.
 - Wording is "nominate" throughout (Ed: not a vote). No DB change; uses existing nomination form (`/api/nominations`).
+
+## 2026-11-05: goals from your coach
+Branch `coach-goals-from-checkins`: migration 010 (`member_coach_goals`), `GET /api/goals/coach`, `CoachGoals` card on My Goals. Rows are written by the Staff Hub from check-ins. Run migration 010 in Supabase first. Not committed.
