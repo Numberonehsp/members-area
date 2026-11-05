@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import PrivacyNotice from "@/components/wellbeing/PrivacyNotice";
 import { consentTextFor, sectionsFor, type Question, type Variant } from "@/lib/questionnaire/schema";
 import { missingRequired, type AnswerValue, type Answers } from "@/lib/questionnaire/answers";
 
@@ -216,7 +217,7 @@ export default function QuestionnaireForm({ variant = "adult" }: { variant?: Var
   if (done || (state.latest && !state.draft && !editing)) {
     return (
       <div className="max-w-xl space-y-4">
-        <p className="text-[11px] tracking-[0.3em] uppercase text-brand font-semibold">{variant === "youth" ? "Youth athlete profile" : "My health profile"}</p>
+        <p className="text-[11px] tracking-[0.3em] uppercase text-brand font-semibold">{variant === "youth" ? "My Health Profile: Youth Athlete" : "My Health Profile"}</p>
         <h1 className="font-display text-4xl text-text-primary leading-[0.95]">{done ? "Thank you" : variant === "youth" ? "You've told us about the athlete" : "You've told us about yourself"}</h1>
         <p className="text-text-secondary">
           {done ? "Your coaches can now use your answers to tailor your training and support." : "You can update your answers whenever things change."}
@@ -237,7 +238,7 @@ export default function QuestionnaireForm({ variant = "adult" }: { variant?: Var
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <p className="text-[11px] tracking-[0.3em] uppercase text-brand font-semibold mb-1">{variant === "youth" ? "Youth athlete profile" : "My health profile"}</p>
+        <p className="text-[11px] tracking-[0.3em] uppercase text-brand font-semibold mb-1">{variant === "youth" ? "My Health Profile: Youth Athlete" : "My Health Profile"}</p>
         <div className="h-1.5 bg-border-light rounded-full overflow-hidden" role="progressbar" aria-valuemin={1} aria-valuemax={total} aria-valuenow={step + 1} aria-label="Progress">
           <div className="h-full bg-brand rounded-full transition-all" style={{ width: `${((step + 1) / total) * 100}%` }} />
         </div>
@@ -247,6 +248,7 @@ export default function QuestionnaireForm({ variant = "adult" }: { variant?: Var
       {last ? (
         <div className="space-y-4">
           <h1 className="font-display text-3xl text-text-primary">Nearly there</h1>
+          <PrivacyNotice what="your answers" />
           <label className="flex items-start gap-3 text-sm text-text-primary">
             <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-1 h-5 w-5" />
             <span>{consentTextFor(variant)}</span>

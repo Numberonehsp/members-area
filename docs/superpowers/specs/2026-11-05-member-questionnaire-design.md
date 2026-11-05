@@ -144,3 +144,14 @@ A separate, shorter questionnaire for under 18s, completed with (or by) a parent
 - Wording is mine; have a coach and a parent read it before launch. Safeguarding: consider who can see youth answers (all coaches by default) and whether a DBS-checked-coach-only rule is wanted.
 
 **Deploy order matters:** run migration 012 in the members-area Supabase project BEFORE this code deploys, because the code reads the new `variant` column (the adult form too).
+
+## 12. Wellbeing hub and injury report (built 2026-11-05, branch `injury-report`)
+
+Wellbeing lists the three forms together: "My Health Profile", "My Health Profile: Youth Athlete", "Report an Injury". Same on/off switch.
+- Injury report fields: body areas (tap front or back figure, up to 8; left and right are the member's own), date, pain 0-10, still sore or getting better, seen a physio or therapist (and who), notes, optional "tell me about therapist services", privacy notice and consent.
+- Members can add several reports and mark each recovering or resolved.
+- Stored in `member_injuries` (migration 013), private like the questionnaire: RLS on, no policy, server routes only, member id from the verified token.
+- Staff Hub, with no change there: a member note of type "Injury / health" (author "Members area (injury report)"), and when therapist info was asked for, a general dashboard task "Injury: <name> would like therapist info (...). Forward to a therapist." Alerts are best effort: a failure never loses the report.
+- Coach portal profile: "Injury history" card (areas, date, pain with 7+ in red, therapist seen, notes, "Asked about therapist services").
+- Privacy notice added to the questionnaire consent step and the injury form. Draft wording: sign-off needed.
+- Decided: all coaches can see health and injury answers.
