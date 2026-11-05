@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import CoachGoals from "./CoachGoals";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -614,6 +615,8 @@ export default function GoalsClient() {
           </div>
         ))}
       </div>
+
+      <CoachGoals />
 
       {activeGoals.length > 0 ? (
         <section>
