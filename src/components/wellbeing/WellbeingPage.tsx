@@ -12,6 +12,13 @@ type Checkin = {
   comments: string | null
 }
 
+// The forms a member can pick from. Shown together so the member chooses the right one.
+const FORMS = [
+  { href: '/wellbeing/profile', icon: '🩺', title: 'My Health Profile', blurb: 'Tell us about your goals, health and habits so we can coach you better' },
+  { href: '/wellbeing/profile/youth', icon: '🏅', title: 'My Health Profile: Youth Athlete', blurb: 'A shorter version for under 18s, to complete with a parent or guardian' },
+  { href: '/wellbeing/injury', icon: '🩹', title: 'Report an Injury', blurb: 'Show us where it hurts so your coaches can adjust your training' },
+]
+
 type Props = { checkins: Checkin[]; profileEnabled?: boolean }
 
 const METRICS: { key: MetricKey; label: string; icon: string; colour: string; textColour: string; invert?: boolean }[] = [
@@ -99,36 +106,23 @@ export default function WellbeingPage({ checkins, profileEnabled = false }: Prop
         </p>
       </div>
 
-      {profileEnabled && (
-        <Link
-          href="/wellbeing/profile"
-          className="flex items-center justify-between bg-bg-card border border-border-light rounded-xl px-5 py-4 mb-4 hover:border-brand/40 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-xl">🩺</span>
-            <div>
-              <p className="text-sm font-semibold text-text-primary">My health profile</p>
-              <p className="text-xs text-text-secondary">Tell us about your goals, health and habits so we can coach you better</p>
+      {profileEnabled &&
+        FORMS.map((f) => (
+          <Link
+            key={f.href}
+            href={f.href}
+            className="flex items-center justify-between bg-bg-card border border-border-light rounded-xl px-5 py-4 mb-4 hover:border-brand/40 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-xl">{f.icon}</span>
+              <div>
+                <p className="text-sm font-semibold text-text-primary">{f.title}</p>
+                <p className="text-xs text-text-secondary">{f.blurb}</p>
+              </div>
             </div>
-          </div>
-          <span className="text-brand text-sm">→</span>
-        </Link>
-      )}
-      {profileEnabled && (
-        <Link
-          href="/wellbeing/profile/youth"
-          className="flex items-center justify-between bg-bg-card border border-border-light rounded-xl px-5 py-4 mb-4 hover:border-brand/40 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-xl">🏅</span>
-            <div>
-              <p className="text-sm font-semibold text-text-primary">Youth athlete profile</p>
-              <p className="text-xs text-text-secondary">A shorter version for under 18s, to complete with a parent or guardian</p>
-            </div>
-          </div>
-          <span className="text-brand text-sm">→</span>
-        </Link>
-      )}
+            <span className="text-brand text-sm">→</span>
+          </Link>
+        ))}
 
       {/* Messages shortcut */}
       <Link

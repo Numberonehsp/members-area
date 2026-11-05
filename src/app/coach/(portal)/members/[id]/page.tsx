@@ -3,6 +3,8 @@ import { fetchMemberScans, fetchMemberStrengthResults, fetchAllMemberEvents } fr
 import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
 import CoachMemberTasks from '@/components/coach/CoachMemberTasks'
+import { adminSupabase } from '@/lib/supabase-admin'
+import { areasWords, HIGH_PAIN, type InjuryRow } from '@/lib/injury/rules'
 
 // ─── Data helpers ─────────────────────────────────────────────────────────────
 
@@ -32,6 +34,23 @@ async function getCoachGoals(gymMasterId: string) {
   return (['goal', 'next'] as const)
     .map((k) => rows.find((g) => g.kind === k))
     .filter((g): g is NonNullable<typeof g> => Boolean(g))
+}
+
+// Injury reports are private data (service-role only). The coach portal is behind
+// the role=coach sign-in check in src/proxy.ts. null means "could not load".
+async function getInjuries(gymMasterId: string): Promise<InjuryRow[] | null> {
+  try {
+    const { data, error } = await adminSupabase()
+      .from('member_injuries')
+      .select('id, areas, injured_on, pain, status, seen_therapist, therapist_note, notes, wants_therapist_info, created_at')
+      .eq('gymmaster_member_id', gymMasterId)
+      .order('created_at', { ascending: false })
+      .limit(50)
+    if (error) return null
+    return (data ?? []) as InjuryRow[]
+  } catch {
+    return null
+  }
 }
 
 async function getMemberTasks(gymMasterId: string) {
@@ -81,7 +100,7 @@ export default async function CoachMemberDetailPage({
   const { id } = await params
 
   // Fetch everything in parallel
-  const [allMembers, scans, strengthResults, goals, visitCache, memberEvents, tasks, coachGoals] = await Promise.all([
+  const [allMembers, scans, strengthResults, goals, visitCache, memberEvents, tasks, coachGoals, injuries] = await Promise.all([
     getAllMembers(),
     fetchMemberScans(id),
     fetchMemberStrengthResults(id),
@@ -90,6 +109,7 @@ export default async function CoachMemberDetailPage({
     fetchAllMemberEvents(id),
     getMemberTasks(id),
     getCoachGoals(id),
+    getInjuries(id),
   ])
 
   const member = allMembers.find((m) => m.id === id)
@@ -188,6 +208,34 @@ export default async function CoachMemberDetailPage({
             memberName={member ? `${member.firstName} ${member.lastName}` : `Member ${id}`}
             initialTasks={tasks}
           />
+
+          {/* Injury history: reported by the member in Wellbeing */}
+          <div className="bg-bg-card border border-border-light rounded-2xl p-5 shadow-sm relative overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-brand via-brand-light to-transparent" />
+            <h2 className="font-semibold text-text-primary text-sm mb-3">🩹 Injury history</h2>
+            {injuries === null ? (
+              <p className="text-xs text-text-secondary">Could not load injury reports.</p>
+            ) : injuries.length === 0 ? (
+              <p className="text-xs text-text-secondary">No injuries reported.</p>
+            ) : (
+              <ul className="space-y-3">
+                {injuries.map((i) => (
+                  <li key={i.id} className="text-xs border-b border-border-light last:border-0 pb-3 last:pb-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="font-semibold text-text-primary text-sm">{areasWords(i.areas)}</span>
+                      <span className={`shrink-0 font-medium ${i.status === 'resolved' ? 'text-text-secondary' : 'text-brand'}`}>{i.status}</span>
+                    </div>
+                    <p className="text-text-secondary mt-0.5">
+                      {fmt(i.injured_on)} · Pain <span className={i.pain >= HIGH_PAIN ? 'font-semibold text-red-700' : ''}>{i.pain}/10</span>
+                      {i.seen_therapist ? ` · Seen a therapist${i.therapist_note ? ` (${i.therapist_note})` : ''}` : ''}
+                    </p>
+                    {i.notes && <p className="text-text-primary mt-1">{i.notes}</p>}
+                    {i.wants_therapist_info && i.status !== 'resolved' && <p className="text-brand font-medium mt-1">Asked about therapist services</p>}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
 
           {/* Goals summary */}
           <div className="bg-bg-card border border-border-light rounded-2xl p-5 shadow-sm relative overflow-hidden">
