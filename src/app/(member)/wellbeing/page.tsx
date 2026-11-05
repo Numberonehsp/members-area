@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers'
 import { createClient } from '@supabase/supabase-js'
 import WellbeingPage from '@/components/wellbeing/WellbeingPage'
+import { isQuestionnaireEnabled } from '@/lib/questionnaire/enabled'
 
 type Checkin = {
   id: string
@@ -38,5 +39,5 @@ export default async function WellbeingPageRoute() {
 
   const checkins = memberId ? await getCheckins(memberId) : []
 
-  return <WellbeingPage checkins={checkins} />
+  return <WellbeingPage checkins={checkins} profileEnabled={isQuestionnaireEnabled()} />
 }

@@ -12,7 +12,7 @@ type Checkin = {
   comments: string | null
 }
 
-type Props = { checkins: Checkin[] }
+type Props = { checkins: Checkin[]; profileEnabled?: boolean }
 
 const METRICS: { key: MetricKey; label: string; icon: string; colour: string; textColour: string; invert?: boolean }[] = [
   { key: 'energy', label: 'Energy',      icon: '⚡', colour: 'bg-brand',         textColour: 'text-brand'         },
@@ -52,7 +52,7 @@ function colourForValue(value: number, invert = false) {
   return 'text-status-red'
 }
 
-export default function WellbeingPage({ checkins }: Props) {
+export default function WellbeingPage({ checkins, profileEnabled = false }: Props) {
   const thisWeek = getISOWeekMonday(new Date())
   const hasThisWeek = checkins.some(c => c.week_start === thisWeek)
 
@@ -98,6 +98,22 @@ export default function WellbeingPage({ checkins }: Props) {
           A quick weekly snapshot of how you're feeling. Your coaches can see this alongside your training data.
         </p>
       </div>
+
+      {profileEnabled && (
+        <Link
+          href="/wellbeing/profile"
+          className="flex items-center justify-between bg-bg-card border border-border-light rounded-xl px-5 py-4 mb-4 hover:border-brand/40 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-xl">🩺</span>
+            <div>
+              <p className="text-sm font-semibold text-text-primary">My health profile</p>
+              <p className="text-xs text-text-secondary">Tell us about your goals, health and habits so we can coach you better</p>
+            </div>
+          </div>
+          <span className="text-brand text-sm">→</span>
+        </Link>
+      )}
 
       {/* Messages shortcut */}
       <Link
