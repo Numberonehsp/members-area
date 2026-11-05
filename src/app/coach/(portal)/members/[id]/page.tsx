@@ -22,6 +22,18 @@ async function getMemberGoals(gymMasterId: string) {
   return data ?? []
 }
 
+// Goals a coach wrote in a Staff Hub check-in (current goals, next goal).
+async function getCoachGoals(gymMasterId: string) {
+  const { data } = await db()
+    .from('member_coach_goals')
+    .select('kind, goal_text, set_on, set_by')
+    .eq('gymmaster_member_id', gymMasterId)
+  const rows = data ?? []
+  return (['goal', 'next'] as const)
+    .map((k) => rows.find((g) => g.kind === k))
+    .filter((g): g is NonNullable<typeof g> => Boolean(g))
+}
+
 async function getMemberTasks(gymMasterId: string) {
   const { data } = await db()
     .from('member_tasks')
@@ -69,7 +81,7 @@ export default async function CoachMemberDetailPage({
   const { id } = await params
 
   // Fetch everything in parallel
-  const [allMembers, scans, strengthResults, goals, visitCache, memberEvents, tasks] = await Promise.all([
+  const [allMembers, scans, strengthResults, goals, visitCache, memberEvents, tasks, coachGoals] = await Promise.all([
     getAllMembers(),
     fetchMemberScans(id),
     fetchMemberStrengthResults(id),
@@ -77,6 +89,7 @@ export default async function CoachMemberDetailPage({
     getMemberVisitCache(id),
     fetchAllMemberEvents(id),
     getMemberTasks(id),
+    getCoachGoals(id),
   ])
 
   const member = allMembers.find((m) => m.id === id)
@@ -180,8 +193,20 @@ export default async function CoachMemberDetailPage({
           <div className="bg-bg-card border border-border-light rounded-2xl p-5 shadow-sm relative overflow-hidden">
             <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-brand via-brand-light to-transparent" />
             <h2 className="font-semibold text-text-primary text-sm mb-3">🎯 Goals</h2>
+            {coachGoals.length > 0 && (
+              <div className="mb-4 space-y-2" aria-label="Goals from check-ins">
+                <p className="text-[10px] tracking-[0.2em] uppercase text-brand font-semibold">From check-ins</p>
+                {coachGoals.map((g) => (
+                  <div key={g.kind}>
+                    <p className="text-[10px] text-text-secondary">{g.kind === 'next' ? 'Next goal' : 'Current goals'}</p>
+                    <p className="text-xs font-medium text-text-primary whitespace-pre-line">{g.goal_text}</p>
+                    <p className="text-[10px] text-text-secondary">{g.set_by}, {fmt(g.set_on)}</p>
+                  </div>
+                ))}
+              </div>
+            )}
             {goals.length === 0 ? (
-              <p className="text-xs text-text-secondary">No goals set yet.</p>
+              coachGoals.length === 0 && <p className="text-xs text-text-secondary">No goals set yet.</p>
             ) : (
               <div className="space-y-3">
                 {activeGoals.map((g) => {
