@@ -4,6 +4,8 @@ import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
 import CoachMemberTasks from '@/components/coach/CoachMemberTasks'
 import { adminSupabase } from '@/lib/supabase-admin'
+import { latestQuestionnaires } from '@/lib/questionnaire/coachView'
+import QuestionnaireSection from '@/components/coach/QuestionnaireSection'
 import { areasWords, HIGH_PAIN, type InjuryRow } from '@/lib/injury/rules'
 
 // ─── Data helpers ─────────────────────────────────────────────────────────────
@@ -100,7 +102,7 @@ export default async function CoachMemberDetailPage({
   const { id } = await params
 
   // Fetch everything in parallel
-  const [allMembers, scans, strengthResults, goals, visitCache, memberEvents, tasks, coachGoals, injuries] = await Promise.all([
+  const [allMembers, scans, strengthResults, goals, visitCache, memberEvents, tasks, coachGoals, injuries, questionnaires] = await Promise.all([
     getAllMembers(),
     fetchMemberScans(id),
     fetchMemberStrengthResults(id),
@@ -110,6 +112,7 @@ export default async function CoachMemberDetailPage({
     getMemberTasks(id),
     getCoachGoals(id),
     getInjuries(id),
+    latestQuestionnaires(adminSupabase, id),
   ])
 
   const member = allMembers.find((m) => m.id === id)
@@ -154,6 +157,8 @@ export default async function CoachMemberDetailPage({
           📊 View Athlete Snapshot
         </Link>
       </div>
+
+      <QuestionnaireSection data={questionnaires} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
