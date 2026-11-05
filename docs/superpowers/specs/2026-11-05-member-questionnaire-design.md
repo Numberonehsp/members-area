@@ -136,7 +136,7 @@ Built, switched OFF (404 until `QUESTIONNAIRE_ENABLED=true`):
 ## 11. Youth athlete version (built 2026-11-05, branch `questionnaire-youth`)
 
 A separate, shorter questionnaire for under 18s, completed with (or by) a parent or guardian. Own page `/wellbeing/profile/youth`, own card on Wellbeing, same switch (`QUESTIONNAIRE_ENABLED`).
-- 6 sections, 29 questions (adult: 10 sections, 53). Simpler words, sport and level, upcoming events, goals with no weight-loss framing, no alcohol or household questions, a parent/guardian section (who is filling it in, guardian name and phone as the emergency contact), asthma/allergy/emergency need, school-night sleep, parent notes.
+- 6 sections, 29 questions (adult: 10 sections, 47). Simpler words, sport and level, upcoming events, goals with no weight-loss framing, no alcohol or household questions, a parent/guardian section (who is filling it in, guardian name and phone as the emergency contact), asthma/allergy/emergency need, school-night sleep, parent notes.
 - Consent wording is the parent or legal guardian's.
 - Flags: low sleep is 7 hours or fewer for the youth form (5 for adults); new flag for asthma/allergy.
 - Stored in the same table with a `variant` column (migration 012). Adult and youth answers are kept apart for the same member.
