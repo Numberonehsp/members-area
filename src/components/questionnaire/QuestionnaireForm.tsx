@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CONSENT_TEXT, SECTIONS, type Question } from "@/lib/questionnaire/schema";
+import { consentTextFor, sectionsFor, type Question, type Variant } from "@/lib/questionnaire/schema";
 import { missingRequired, type AnswerValue, type Answers } from "@/lib/questionnaire/answers";
 
 type State = { draft: { answers: Answers } | null; latest: { answers: Answers; submitted_at: string | null } | null };
@@ -121,7 +121,8 @@ function QuestionField({ q, value, onChange, answers }: { q: Question; value: An
   }
 }
 
-export default function QuestionnaireForm() {
+export default function QuestionnaireForm({ variant = "adult" }: { variant?: Variant }) {
+  const SECTIONS = sectionsFor(variant);
   const [state, setState] = useState<State | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Answers>({});
@@ -133,7 +134,7 @@ export default function QuestionnaireForm() {
   const [editing, setEditing] = useState(false);
 
   useEffect(() => {
-    fetch("/api/questionnaire")
+    fetch(`/api/questionnaire?variant=${variant}`)
       .then(async (r) => {
         if (!r.ok) throw new Error(String(r.status));
         return (await r.json()) as State;
@@ -144,15 +145,15 @@ export default function QuestionnaireForm() {
         setAnswers(s.draft?.answers ?? s.latest?.answers ?? {});
       })
       .catch(() => setLoadError("We couldn't load your questions. Please try again in a moment."));
-  }, []);
+  }, [variant]);
 
   const total = SECTIONS.length + 1; // plus the consent step
   const section = SECTIONS[step];
   const missingHere = useMemo(() => {
     if (!section) return [];
     const ids = new Set(section.questions.map((q) => q.id));
-    return missingRequired(answers).filter((q) => ids.has(q.id));
-  }, [answers, section]);
+    return missingRequired(answers, variant).filter((q) => ids.has(q.id));
+  }, [answers, section, variant]);
 
   function change(id: string, v: AnswerValue | null) {
     setAnswers((prev) => {
@@ -167,7 +168,7 @@ export default function QuestionnaireForm() {
     const res = await fetch("/api/questionnaire/draft", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ answers: a }),
+      body: JSON.stringify({ variant, answers: a }),
     });
     if (!res.ok) {
       const j = await res.json().catch(() => ({}));
@@ -175,7 +176,7 @@ export default function QuestionnaireForm() {
       return false;
     }
     return true;
-  }, []);
+  }, [variant]);
 
   async function next() {
     setError(null);
@@ -198,7 +199,7 @@ export default function QuestionnaireForm() {
     const res = await fetch("/api/questionnaire/submit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ answers, consent }),
+      body: JSON.stringify({ variant, answers, consent }),
     });
     setBusy(false);
     if (!res.ok) {
@@ -215,8 +216,8 @@ export default function QuestionnaireForm() {
   if (done || (state.latest && !state.draft && !editing)) {
     return (
       <div className="max-w-xl space-y-4">
-        <p className="text-[11px] tracking-[0.3em] uppercase text-brand font-semibold">My health profile</p>
-        <h1 className="font-display text-4xl text-text-primary leading-[0.95]">{done ? "Thank you" : "You've told us about yourself"}</h1>
+        <p className="text-[11px] tracking-[0.3em] uppercase text-brand font-semibold">{variant === "youth" ? "Youth athlete profile" : "My health profile"}</p>
+        <h1 className="font-display text-4xl text-text-primary leading-[0.95]">{done ? "Thank you" : variant === "youth" ? "You've told us about the athlete" : "You've told us about yourself"}</h1>
         <p className="text-text-secondary">
           {done ? "Your coaches can now use your answers to tailor your training and support." : "You can update your answers whenever things change."}
         </p>
@@ -236,7 +237,7 @@ export default function QuestionnaireForm() {
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <p className="text-[11px] tracking-[0.3em] uppercase text-brand font-semibold mb-1">My health profile</p>
+        <p className="text-[11px] tracking-[0.3em] uppercase text-brand font-semibold mb-1">{variant === "youth" ? "Youth athlete profile" : "My health profile"}</p>
         <div className="h-1.5 bg-border-light rounded-full overflow-hidden" role="progressbar" aria-valuemin={1} aria-valuemax={total} aria-valuenow={step + 1} aria-label="Progress">
           <div className="h-full bg-brand rounded-full transition-all" style={{ width: `${((step + 1) / total) * 100}%` }} />
         </div>
@@ -248,7 +249,7 @@ export default function QuestionnaireForm() {
           <h1 className="font-display text-3xl text-text-primary">Nearly there</h1>
           <label className="flex items-start gap-3 text-sm text-text-primary">
             <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-1 h-5 w-5" />
-            <span>{CONSENT_TEXT}</span>
+            <span>{consentTextFor(variant)}</span>
           </label>
         </div>
       ) : (

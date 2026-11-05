@@ -132,3 +132,15 @@ Built, switched OFF (404 until `QUESTIONNAIRE_ENABLED=true`):
 - UI: `/wellbeing/profile` (one section per screen, autosave on Next, progress bar, consent step) and a "My health profile" card on Wellbeing (only when enabled).
 - Defaults I took for the open decisions: our own wording; no PAR-Q+ (health is yes/no plus detail; medication yes/no only, no names); no under-18 handling yet; all coaches can see answers (Phase 3). **Decide the under-18 and PAR-Q+ questions before turning the switch on.**
 - 45 tests pass; `next build` passes. Not run against a real database (migration 011 and the key are not set up yet), so the save and submit routes are tested with a fake store only.
+
+## 11. Youth athlete version (built 2026-11-05, branch `questionnaire-youth`)
+
+A separate, shorter questionnaire for under 18s, completed with (or by) a parent or guardian. Own page `/wellbeing/profile/youth`, own card on Wellbeing, same switch (`QUESTIONNAIRE_ENABLED`).
+- 6 sections, 29 questions (adult: 10 sections, 53). Simpler words, sport and level, upcoming events, goals with no weight-loss framing, no alcohol or household questions, a parent/guardian section (who is filling it in, guardian name and phone as the emergency contact), asthma/allergy/emergency need, school-night sleep, parent notes.
+- Consent wording is the parent or legal guardian's.
+- Flags: low sleep is 7 hours or fewer for the youth form (5 for adults); new flag for asthma/allergy.
+- Stored in the same table with a `variant` column (migration 012). Adult and youth answers are kept apart for the same member.
+- Not age-gated: anyone can open either form, because the members area does not know a member's age cheaply. A parent filling it in on their own login is allowed.
+- Wording is mine; have a coach and a parent read it before launch. Safeguarding: consider who can see youth answers (all coaches by default) and whether a DBS-checked-coach-only rule is wanted.
+
+**Deploy order matters:** run migration 012 in the members-area Supabase project BEFORE this code deploys, because the code reads the new `variant` column (the adult form too).

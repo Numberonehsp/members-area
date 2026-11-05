@@ -1,27 +1,39 @@
 import { describe, it, expect } from 'vitest'
 import { cleanAnswers, missingRequired, type Answers } from '../answers'
 import { flagsFor, scoresFor } from '../scoring'
-import { ALL_QUESTIONS, SECTIONS } from '../schema'
+import { questionsFor, sectionsFor, consentTextFor, type Variant } from '../schema'
 import { getState, saveDraft, submit, type QuestionnaireRow, type QuestionnaireStore } from '../service'
 
 // Synthetic data only.
-const complete = (): Answers => {
+const complete = (variant: Variant = 'adult'): Answers => {
   const a: Answers = {}
-  for (const q of ALL_QUESTIONS) {
+  for (const q of questionsFor(variant)) {
     if (!q.required) continue
     a[q.id] =
       q.kind === 'scale' ? 6 : q.kind === 'yesno' ? false : q.kind === 'multi' ? [q.options[0].value] : q.kind === 'single' ? q.options[0].value : q.kind === 'hours' ? 0 : 'text'
   }
-  a.sleep_hours = '7'
+  if (variant === 'adult') a.sleep_hours = '7'
+  else a.sleep_hours_youth = '9'
   return a
 }
 
 describe('schema', () => {
-  it('has unique question ids and every choice question has options', () => {
-    const ids = ALL_QUESTIONS.map(q => q.id)
+  it.each(['adult', 'youth'] as const)('%s: unique question ids and every choice question has options', v => {
+    const ids = questionsFor(v).map(q => q.id)
     expect(new Set(ids).size).toBe(ids.length)
-    for (const q of ALL_QUESTIONS) if (q.kind === 'single' || q.kind === 'multi') expect(q.options.length).toBeGreaterThan(1)
-    expect(SECTIONS.length).toBeGreaterThan(5)
+    for (const q of questionsFor(v)) if (q.kind === 'single' || q.kind === 'multi') expect(q.options.length).toBeGreaterThan(1)
+    expect(sectionsFor(v).length).toBeGreaterThan(4)
+  })
+
+  it('the youth version is shorter and uses parent consent wording', () => {
+    expect(questionsFor('youth').length).toBeLessThan(questionsFor('adult').length)
+    expect(consentTextFor('youth')).toMatch(/parent or legal guardian/)
+    expect(consentTextFor('adult')).not.toMatch(/guardian/)
+  })
+
+  it('the youth version has no weight-loss goal and no alcohol or medication-reduction questions', () => {
+    const youth = JSON.stringify(sectionsFor('youth')).toLowerCase()
+    expect(youth).not.toMatch(/lose weight|lose_fat|alcohol|reliance on medication/)
   })
 })
 
@@ -75,16 +87,38 @@ describe('scoring and flags', () => {
   })
 })
 
+describe('youth variant', () => {
+  it('accepts youth answers, and rejects adult-only questions on the youth form (and the reverse)', () => {
+    expect(cleanAnswers({ youth_goals: ['stronger'], sleep_hours_youth: '9', guardian_name: 'Test Parent' }, 'youth').ok).toBe(true)
+    expect(cleanAnswers({ alcohol: 'none' }, 'youth').ok).toBe(false)
+    expect(cleanAnswers({ youth_goals: ['stronger'] }, 'adult').ok).toBe(false)
+    expect(cleanAnswers({ sleep_hours_youth: '9' }, 'adult').ok).toBe(false)
+  })
+
+  it('requires the guardian details and the health questions', () => {
+    const ids = missingRequired({}, 'youth').map(q => q.id)
+    expect(ids).toEqual(expect.arrayContaining(['guardian_name', 'guardian_phone', 'has_condition', 'has_asthma_allergy']))
+    expect(missingRequired(complete('youth'), 'youth')).toEqual([])
+  })
+
+  it('flags youth sleep at 7 hours or fewer, not 5, and asthma or allergy', () => {
+    expect(flagsFor({ sleep_hours_youth: '7-' }, 'youth')).toEqual(['low_sleep'])
+    expect(flagsFor({ sleep_hours_youth: '8' }, 'youth')).toEqual([])
+    expect(flagsFor({ sleep_hours: '6' }, 'adult')).toEqual([])
+    expect(flagsFor({ has_asthma_allergy: true }, 'youth')).toEqual(['asthma_or_allergy'])
+  })
+})
+
 function fakeStore() {
   const rows: QuestionnaireRow[] = []
   let n = 0
   const store: QuestionnaireStore = {
-    async findDraft(m) { return rows.find(r => r.gymmaster_member_id === m && r.status === 'draft') ?? null },
-    async latestSubmitted(m) { return rows.filter(r => r.gymmaster_member_id === m && r.status === 'submitted').at(-1) ?? null },
-    async saveDraft(m, kind, answers) {
-      const ex = rows.find(r => r.gymmaster_member_id === m && r.status === 'draft')
+    async findDraft(m, v) { return rows.find(r => r.gymmaster_member_id === m && r.variant === v && r.status === 'draft') ?? null },
+    async latestSubmitted(m, v) { return rows.filter(r => r.gymmaster_member_id === m && r.variant === v && r.status === 'submitted').at(-1) ?? null },
+    async saveDraft(m, v, kind, answers) {
+      const ex = rows.find(r => r.gymmaster_member_id === m && r.variant === v && r.status === 'draft')
       if (ex) { ex.answers = answers; return ex }
-      const row: QuestionnaireRow = { id: `q${++n}`, gymmaster_member_id: m, kind, version: 1, status: 'draft', answers, scores: {}, flags: [], consent_at: null, submitted_at: null, updated_at: 't' }
+      const row: QuestionnaireRow = { id: `q${++n}`, gymmaster_member_id: m, kind, variant: v, version: 1, status: 'draft', answers, scores: {}, flags: [], consent_at: null, submitted_at: null, updated_at: 't' }
       rows.push(row)
       return row
     },
@@ -100,46 +134,58 @@ function fakeStore() {
 describe('service', () => {
   it('a draft merges what was sent with what was saved, and a blank clears an answer', async () => {
     const { store } = fakeStore()
-    await saveDraft(store, '100', { priority_1: 'A', rating_stress: 5 })
-    const r = await saveDraft(store, '100', { priority_2: 'B', priority_1: '' })
+    await saveDraft(store, '100', 'adult', { priority_1: 'A', rating_stress: 5 })
+    const r = await saveDraft(store, '100', 'adult', { priority_2: 'B', priority_1: '' })
     expect(r.status).toBe(200)
     expect((r.body as { draft: QuestionnaireRow }).draft.answers).toEqual({ rating_stress: 5, priority_2: 'B' })
   })
 
   it('a bad draft is a 400 and saves nothing', async () => {
     const { store, rows } = fakeStore()
-    expect((await saveDraft(store, '100', { rating_stress: 99 })).status).toBe(400)
+    expect((await saveDraft(store, '100', 'adult', { rating_stress: 99 })).status).toBe(400)
     expect(rows).toHaveLength(0)
   })
 
   it('submit needs consent and every required answer', async () => {
     const { store } = fakeStore()
     const now = new Date('2026-11-05T12:00:00Z')
-    expect((await submit(store, '100', { answers: complete(), consent: false, now })).status).toBe(400)
-    expect((await submit(store, '100', { answers: { priority_1: 'x' }, consent: true, now })).status).toBe(400)
+    expect((await submit(store, '100', 'adult', { answers: complete(), consent: false, now })).status).toBe(400)
+    expect((await submit(store, '100', 'adult', { answers: { priority_1: 'x' }, consent: true, now })).status).toBe(400)
   })
 
   it('submit stores scores, flags and consent time; the next one is a refresh', async () => {
     const { store, rows } = fakeStore()
     const now = new Date('2026-11-05T12:00:00Z')
     const a = { ...complete(), has_pain: true }
-    const r = await submit(store, '100', { answers: a, consent: true, now })
+    const r = await submit(store, '100', 'adult', { answers: a, consent: true, now })
     expect(r.status).toBe(200)
     expect(rows[0]).toMatchObject({ status: 'submitted', kind: 'initial', consent_at: now.toISOString(), flags: ['pain_or_injury'] })
-    await saveDraft(store, '100', { priority_1: 'new' })
+    await saveDraft(store, '100', 'adult', { priority_1: 'new' })
     expect(rows[1].kind).toBe('refresh')
   })
 
   it('answers saved earlier count towards a submit', async () => {
     const { store } = fakeStore()
-    await saveDraft(store, '100', complete())
-    expect((await submit(store, '100', { answers: {}, consent: true, now: new Date() })).status).toBe(200)
+    await saveDraft(store, '100', 'adult', complete())
+    expect((await submit(store, '100', 'adult', { answers: {}, consent: true, now: new Date() })).status).toBe(200)
+  })
+
+  it('adult and youth answers are kept apart for the same member', async () => {
+    const { store, rows } = fakeStore()
+    await saveDraft(store, '100', 'adult', { priority_1: 'adult goal' })
+    await saveDraft(store, '100', 'youth', { priority_1: 'youth goal' })
+    expect(rows).toHaveLength(2)
+    expect((await getState(store, '100', 'youth')).draft?.answers).toEqual({ priority_1: 'youth goal' })
+    const r = await submit(store, '100', 'youth', { answers: complete('youth'), consent: true, now: new Date('2026-11-05T12:00:00Z') })
+    expect(r.status).toBe(200)
+    expect(rows.find(x => x.variant === 'youth')).toMatchObject({ status: 'submitted', kind: 'initial' })
+    expect(rows.find(x => x.variant === 'adult')?.status).toBe('draft')
   })
 
   it('one member never sees another’s answers', async () => {
     const { store } = fakeStore()
-    await saveDraft(store, '100', { priority_1: 'mine' })
-    const other = await getState(store, '200')
+    await saveDraft(store, '100', 'adult', { priority_1: 'mine' })
+    const other = await getState(store, '200', 'adult')
     expect(other).toEqual({ draft: null, latest: null })
   })
 })
