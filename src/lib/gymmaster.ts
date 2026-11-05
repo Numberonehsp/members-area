@@ -102,6 +102,27 @@ export type MemberProfile = {
 }
 
 /**
+ * Which member does this GymMaster login token belong to? Returns the member id,
+ * or null if the token is not valid. Unlike getMemberProfile it logs nothing
+ * (no profile data in the logs) and returns nothing but the id. Used to decide
+ * who a request really is before touching health data.
+ */
+export async function verifyMemberToken(memberToken: string): Promise<string | null> {
+  if (!SITE_NAME || !memberToken) return null
+  try {
+    const url = `${baseUrl()}/member/profile?token=${encodeURIComponent(memberToken)}&api_key=${encodeURIComponent(MEMBER_API_KEY)}`
+    const res = await fetch(url, { cache: 'no-store' })
+    if (!res.ok) return null
+    const data = (await res.json()) as { error?: string | null; result?: Record<string, unknown> | null }
+    if (data.error || !data.result) return null
+    const id = String(data.result.memberid ?? data.result.id ?? '')
+    return id === '' ? null : id
+  } catch {
+    return null
+  }
+}
+
+/**
  * Fetch the logged-in member's profile (name, email, etc.).
  * Uses the member's own GymMaster token obtained at login.
  * Returns null if no token, no site, or the request fails — caller should fall back.

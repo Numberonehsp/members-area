@@ -420,3 +420,6 @@ Branch `coach-goals-from-checkins`: migration 010 (`member_coach_goals`), `GET /
 
 ## 2026-11-05: coach profile shows coach goals
 Branch `coach-profile-coach-goals`: coach portal member page Goals card lists the check-in goals from `member_coach_goals`.
+
+## 2026-11-05: questionnaire Phase 0
+Branch `questionnaire-phase-0`: `supabase-admin.ts`, `member-auth.ts`, `verifyMemberToken`, migration 011 (`member_questionnaires`, RLS on, no policy). Plan: docs/superpowers/specs/2026-11-05-member-questionnaire-design.md. Not live until migration 011 is run and SUPABASE_SERVICE_ROLE_KEY is set in Vercel.
