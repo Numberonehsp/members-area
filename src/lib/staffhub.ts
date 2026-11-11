@@ -5,9 +5,12 @@
 // staffHubWriter — service role key, API routes ONLY
 //
 // Both are server-side only — never import in 'use client' components.
+// inbody_scans is NOT readable with the anon key: read it with staffHubWriter,
+// and for a member's own scans use fetchOwnScans (verified member id).
 // =============================================
 
 import { createClient } from '@supabase/supabase-js'
+import { verifiedMemberId } from '@/lib/member-auth'
 
 const STAFFHUB_URL = process.env.STAFFHUB_SUPABASE_URL ?? ''
 const STAFFHUB_ANON_KEY = process.env.STAFFHUB_SUPABASE_ANON_KEY ?? ''
@@ -249,12 +252,13 @@ export type InBodyScan = {
 
 /**
  * Fetch InBody scan history for a single member, newest first.
- * Used by the member body-composition page.
+ * Takes any member id, so use it only where the caller is already a coach.
+ * Member pages use fetchOwnScans.
  */
 export async function fetchMemberScans(gymMasterId: string): Promise<InBodyScan[]> {
-  if (!STAFFHUB_URL || !STAFFHUB_ANON_KEY) return []
+  if (!STAFFHUB_URL || !STAFFHUB_SERVICE_KEY) return []
   try {
-    const { data, error } = await staffHubReader
+    const { data, error } = await staffHubWriter
       .from('inbody_scans')
       .select('id, gymmaster_member_id, scan_date, weight, smm, bf_pct, bf_mass, member_name, notes, created_at')
       .eq('gymmaster_member_id', gymMasterId)
@@ -271,13 +275,23 @@ export async function fetchMemberScans(gymMasterId: string): Promise<InBodyScan[
 }
 
 /**
+ * The signed-in member's own scans. The id comes from the verified GymMaster
+ * token, never from a cookie the member can edit. Empty if not verified.
+ */
+export async function fetchOwnScans(): Promise<InBodyScan[]> {
+  const memberId = await verifiedMemberId()
+  if (!memberId) return []
+  return fetchMemberScans(memberId)
+}
+
+/**
  * Fetch the most recent InBody scans across all members.
  * Used by the coach InBody input page to show recent activity.
  */
 export async function fetchRecentScans(limit = 20): Promise<InBodyScan[]> {
-  if (!STAFFHUB_URL || !STAFFHUB_ANON_KEY) return []
+  if (!STAFFHUB_URL || !STAFFHUB_SERVICE_KEY) return []
   try {
-    const { data, error } = await staffHubReader
+    const { data, error } = await staffHubWriter
       .from('inbody_scans')
       .select('id, gymmaster_member_id, scan_date, weight, smm, bf_pct, bf_mass, member_name, notes, created_at')
       .order('scan_date', { ascending: false })

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { staffHubWriter } from '@/lib/staffhub'
+import { verifiedMemberId } from '@/lib/member-auth'
 
 export async function POST(
   req: NextRequest,
@@ -9,7 +10,7 @@ export async function POST(
   const { id: challengeId } = await params
 
   const cookieStore = await cookies()
-  const gymMasterId = cookieStore.get('gymmaster_member_id')?.value
+  const gymMasterId = await verifiedMemberId()
   const memberName = [
     cookieStore.get('gymmaster_first_name')?.value,
     cookieStore.get('gymmaster_last_name')?.value,

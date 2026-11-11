@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
+import { verifiedMemberId } from '@/lib/member-auth'
 import { staffHubWriter } from '@/lib/staffhub'
 
 /** POST — member self-enters their own InBody scan */
 export async function POST(request: NextRequest) {
-  const cookieStore = await cookies()
-  const gymMasterId = cookieStore.get('gymmaster_member_id')?.value
+  const gymMasterId = await verifiedMemberId()
 
   if (!gymMasterId) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
@@ -43,8 +42,7 @@ export async function POST(request: NextRequest) {
 
 /** DELETE — member removes one of their OWN InBody scans */
 export async function DELETE(request: NextRequest) {
-  const cookieStore = await cookies()
-  const gymMasterId = cookieStore.get('gymmaster_member_id')?.value
+  const gymMasterId = await verifiedMemberId()
 
   if (!gymMasterId) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
