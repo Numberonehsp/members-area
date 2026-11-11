@@ -1,4 +1,4 @@
-import { fetchMemberScans } from '@/lib/staffhub'
+import { fetchOwnScans } from '@/lib/staffhub'
 import type { InBodyScan } from '@/lib/staffhub'
 
 type Props = {
@@ -34,7 +34,7 @@ export default async function QuickStats({ gymMasterId, visitsThisMonth }: Props
   // Fetch last two scans to compute deltas
   let scans: InBodyScan[] = []
   if (gymMasterId && gymMasterId !== 'DEMO') {
-    scans = await fetchMemberScans(gymMasterId)
+    scans = await fetchOwnScans()
   }
 
   const latest = scans[0] ?? null

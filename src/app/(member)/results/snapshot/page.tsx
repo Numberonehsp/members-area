@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 import {
-  fetchMemberScans,
+  fetchOwnScans,
   fetchMemberStrengthResults,
   fetchAllMemberEvents,
 } from "@/lib/staffhub";
@@ -15,7 +15,7 @@ export default async function AthleteSnapshotPage() {
   const gymMasterId = cookieStore.get("gymmaster_member_id")?.value ?? "";
 
   const [scans, strengthResults, events] = await Promise.all([
-    gymMasterId ? fetchMemberScans(gymMasterId) : Promise.resolve([] as InBodyScan[]),
+    gymMasterId ? fetchOwnScans() : Promise.resolve([] as InBodyScan[]),
     gymMasterId ? fetchMemberStrengthResults(gymMasterId) : Promise.resolve([] as StrengthResult[]),
     gymMasterId ? fetchAllMemberEvents(gymMasterId) : Promise.resolve([] as MemberEvent[]),
   ]);
